@@ -94,7 +94,7 @@ export default function DashboardPage() {
         </div>
       </section>
 
-      <section className="grid grid-cols-1 gap-6 lg:grid-cols-2">
+      <section className="grid grid-cols-1 gap-6">
         <Card className="shadow-md">
           <CardHeader>
             <CardTitle>Resumo do Inventário</CardTitle>
@@ -117,29 +117,6 @@ export default function DashboardPage() {
              <Button asChild className="w-full mt-4">
               <Link href="/equipamentos">Ver Inventário Completo</Link>
             </Button>
-          </CardContent>
-        </Card>
-        <Card className="shadow-md">
-           <CardHeader>
-            <CardTitle>Atividade Recente</CardTitle>
-            <CardDescription>Últimas movimentações e conferências.</CardDescription>
-          </CardHeader>
-          <CardContent>
-            {/* TODO: Implement dynamic recent activity feed */}
-            <ul className="space-y-3">
-              <li className="flex items-center justify-between text-sm">
-                <div><span className="font-medium">Notebook Dell XPS</span> adicionado ao setor <span className="text-primary">TI</span>.</div>
-                <div className="text-muted-foreground">Agora mesmo</div>
-              </li>
-              <li className="flex items-center justify-between text-sm">
-                <div><span className="font-medium">Conferência</span> realizada no setor <span className="text-primary">Marketing</span>.</div>
-                <div className="text-muted-foreground">Há 2 horas</div>
-              </li>
-               <li className="flex items-center justify-between text-sm">
-                <div><span className="font-medium">Projetor Epson</span> movido para <span className="text-primary">Sala de Reuniões A</span>.</div>
-                <div className="text-muted-foreground">Ontem</div>
-              </li>
-            </ul>
           </CardContent>
         </Card>
       </section>
