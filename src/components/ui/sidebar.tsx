@@ -544,24 +544,24 @@ const SidebarMenuButton = React.forwardRef<
 >(
   (
     {
-      asChild: localAsChild = false, 
+      asChild: useSlotSemantics = false, // Determines if this component renders Slot or button
       isActive = false,
       variant = "default",
       size = "default",
       tooltip,
       className,
-      children, 
-      ...restProps
+      children,
+      // All other props (including href, onClick from Link, and potentially asChild from Link) are in ...remainingProps
+      ...remainingProps 
     },
     ref
   ) => {
-    const Comp = localAsChild ? Slot : "button"
-    const { isMobile, state } = useSidebar()
+    const Comp = useSlotSemantics ? Slot : "button";
+    const { isMobile, state } = useSidebar();
 
-    // Explicitly remove `asChild` from `restProps` to prevent it from being spread
-    // onto the underlying Comp (Slot or button). This is crucial if a parent component
-    // (like Link or TooltipTrigger) passes its own `asChild` prop down.
-    const { asChild: incomingAsChild, ...finalPropsToSpread } = restProps
+    // Critical: Remove 'asChild' from remainingProps if it exists (e.g., passed by Link asChild)
+    // so it's not incorrectly passed to the underlying Comp (Slot or button).
+    const { asChild: asChildFromParent, ...propsToPassToComp } = remainingProps;
 
     const buttonElement = (
       <Comp
@@ -570,17 +570,17 @@ const SidebarMenuButton = React.forwardRef<
         data-size={size}
         data-active={isActive}
         className={cn(sidebarMenuButtonVariants({ variant, size }), className)}
-        {...finalPropsToSpread}
+        {...propsToPassToComp} // These props are now clean of any 'asChild'
       >
         {children}
       </Comp>
-    )
+    );
 
     if (!tooltip) {
-      return buttonElement
+      return buttonElement;
     }
 
-    const tooltipProps = typeof tooltip === "string" ? { children: tooltip } : tooltip
+    const tooltipProps = typeof tooltip === "string" ? { children: tooltip } : tooltip;
 
     return (
       <Tooltip>
@@ -592,9 +592,9 @@ const SidebarMenuButton = React.forwardRef<
           {...tooltipProps}
         />
       </Tooltip>
-    )
+    );
   }
-)
+);
 SidebarMenuButton.displayName = "SidebarMenuButton"
 
 const SidebarMenuAction = React.forwardRef<
@@ -766,3 +766,4 @@ export {
   SidebarTrigger,
   useSidebar,
 }
+
