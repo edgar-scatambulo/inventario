@@ -4,7 +4,7 @@ import { Toaster } from '@/components/ui/toaster';
 import { AuthProvider } from '@/hooks/use-auth';
 
 export const metadata: Metadata = {
-  title: 'Inventário Ágil',
+  title: 'Controle de Inventário',
   description: 'Software de inventário com cadastro de equipamentos e setores.',
 };
 

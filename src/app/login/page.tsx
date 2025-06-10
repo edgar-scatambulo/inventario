@@ -66,7 +66,7 @@ export default function LoginPage() {
       <Card className="w-full max-w-md shadow-xl">
         <CardHeader className="items-center text-center">
           <Logo className="mb-4 h-12 w-12" />
-          <CardTitle className="text-3xl font-headline">Inventário Ágil</CardTitle>
+          <CardTitle className="text-3xl font-headline">Controle de Inventário</CardTitle>
           <CardDescription>Acesse sua conta para gerenciar o inventário.</CardDescription>
         </CardHeader>
         <CardContent>

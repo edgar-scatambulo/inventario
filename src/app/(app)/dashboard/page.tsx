@@ -17,7 +17,7 @@ export default function DashboardPage() {
     <div className="space-y-8">
       <Card className="shadow-lg">
         <CardHeader>
-          <CardTitle className="text-3xl font-headline text-primary">Bem-vindo ao Inventário Ágil!</CardTitle>
+          <CardTitle className="text-3xl font-headline text-primary">Bem-vindo ao Controle de Inventário!</CardTitle>
           <CardDescription className="text-lg">
             Sua solução completa para gerenciamento de inventário. Comece organizando seus equipamentos e setores.
           </CardDescription>

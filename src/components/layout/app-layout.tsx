@@ -42,7 +42,7 @@ export default function AppLayout({ children }: { children: React.ReactNode }) {
           <div className="flex items-center gap-2 group-data-[collapsible=icon]:justify-center">
             <Logo />
             <span className="text-lg font-semibold text-primary group-data-[collapsible=icon]:hidden">
-              Inventário Ágil
+              Controle de Inventário
             </span>
           </div>
           <CustomSidebarTrigger/>
@@ -52,7 +52,7 @@ export default function AppLayout({ children }: { children: React.ReactNode }) {
         </SidebarContent>
         <SidebarFooter className="p-4 group-data-[collapsible=icon]:hidden">
           <p className="text-xs text-muted-foreground">
-            &copy; {new Date().getFullYear()} Inventário Ágil
+            &copy; {new Date().getFullYear()} Controle de Inventário
           </p>
         </SidebarFooter>
       </Sidebar>

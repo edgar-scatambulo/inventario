@@ -37,7 +37,7 @@ export default function HomePageRedirector() {
         <polyline points="3.27 6.96 12 12.01 20.73 6.96"></polyline>
         <line x1="12" y1="22.08" x2="12" y2="12"></line>
       </svg>
-      <p className="text-lg font-medium text-foreground">Carregando Inventário Ágil...</p>
+      <p className="text-lg font-medium text-foreground">Carregando Controle de Inventário...</p>
       <div className="w-full max-w-xs space-y-2">
         <Skeleton className="h-4 w-full" />
         <Skeleton className="h-4 w-3/4" />

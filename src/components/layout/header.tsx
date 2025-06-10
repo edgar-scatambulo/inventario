@@ -23,7 +23,7 @@ export function Header() {
 
   const getPageTitle = () => {
     const currentNavItem = navItemsMap.find(item => pathname.startsWith(item.href));
-    return currentNavItem ? currentNavItem.label : "Inventário Ágil";
+    return currentNavItem ? currentNavItem.label : "Controle de Inventário";
   };
 
   return (
