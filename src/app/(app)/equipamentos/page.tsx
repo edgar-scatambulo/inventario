@@ -44,6 +44,7 @@ import { Textarea } from '@/components/ui/textarea';
 import type { Equipment, Sector } from '@/lib/types';
 import { mockEquipment, mockSectors } from '@/lib/mock-data';
 import { useToast } from '@/hooks/use-toast';
+import { cn } from '@/lib/utils';
 
 const equipmentFormSchema = z.object({
   name: z.string().min(3, { message: 'Nome deve ter pelo menos 3 caracteres.' }),
@@ -125,6 +126,7 @@ export default function EquipamentosPage() {
             barcode: data.barcode, 
             sectorId: finalSectorId, 
             sectorName 
+            // lastCheckedTimestamp remains unchanged on edit unless explicitly updated
           } 
         : eq
       );
@@ -137,6 +139,7 @@ export default function EquipamentosPage() {
         barcode: data.barcode,
         sectorId: finalSectorId,
         sectorName,
+        // New equipment doesn't have lastCheckedTimestamp initially
       };
       updatedEquipments = [newEquipment, ...equipments];
       toast({ title: 'Sucesso!', description: 'Equipamento adicionado.' });
@@ -307,7 +310,12 @@ export default function EquipamentosPage() {
             </TableHeader>
             <TableBody>
               {filteredEquipments.length > 0 ? filteredEquipments.map(equipment => (
-                <TableRow key={equipment.id}>
+                <TableRow
+                  key={equipment.id}
+                  className={cn(
+                    !equipment.lastCheckedTimestamp && 'bg-destructive/10 hover:bg-destructive/15 dark:bg-destructive/20 dark:hover:bg-destructive/25'
+                  )}
+                >
                   <TableCell className="font-medium">{equipment.name}</TableCell>
                   <TableCell>{equipment.barcode}</TableCell>
                   <TableCell>{equipment.sectorName || 'N/A'}</TableCell>
@@ -353,3 +361,6 @@ export default function EquipamentosPage() {
     </Card>
   );
 }
+
+
+    
