@@ -47,6 +47,7 @@ export function SidebarNav() {
         <SidebarMenuItem key={item.label}>
           <Link href={item.href} asChild>
             <SidebarMenuButton
+              asChild // Added asChild here
               isActive={pathname === item.href || (item.href !== '/dashboard' && pathname.startsWith(item.href))}
               tooltip={item.label}
               aria-label={item.label}
