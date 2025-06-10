@@ -1,3 +1,4 @@
+
 "use client"
 
 import * as React from "react"
@@ -543,48 +544,50 @@ const SidebarMenuButton = React.forwardRef<
 >(
   (
     {
-      asChild = false,
+      asChild: localAsChild = false, // Renamed to avoid confusion with asChild from restProps
       isActive = false,
       variant = "default",
       size = "default",
       tooltip,
       className,
-      ...props
+      children, // Explicitly include children to pass to Comp
+      ...restProps
     },
     ref
   ) => {
-    const Comp = asChild ? Slot : "button"
+    const Comp = localAsChild ? Slot : "button"
     const { isMobile, state } = useSidebar()
 
-    const button = (
+    // Ensure 'asChild' from restProps is not passed to Comp
+    const { asChild: _asChildFromRest, ...finalPropsToSpread } = restProps
+
+    const buttonElement = (
       <Comp
         ref={ref}
         data-sidebar="menu-button"
         data-size={size}
         data-active={isActive}
         className={cn(sidebarMenuButtonVariants({ variant, size }), className)}
-        {...props}
-      />
+        {...finalPropsToSpread}
+      >
+        {children}
+      </Comp>
     )
 
     if (!tooltip) {
-      return button
+      return buttonElement
     }
 
-    if (typeof tooltip === "string") {
-      tooltip = {
-        children: tooltip,
-      }
-    }
+    const tooltipProps = typeof tooltip === "string" ? { children: tooltip } : tooltip
 
     return (
       <Tooltip>
-        <TooltipTrigger asChild>{button}</TooltipTrigger>
+        <TooltipTrigger asChild>{buttonElement}</TooltipTrigger>
         <TooltipContent
           side="right"
           align="center"
           hidden={state !== "collapsed" || isMobile}
-          {...tooltip}
+          {...tooltipProps}
         />
       </Tooltip>
     )
@@ -761,3 +764,5 @@ export {
   SidebarTrigger,
   useSidebar,
 }
+
+    
