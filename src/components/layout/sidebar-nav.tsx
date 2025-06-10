@@ -47,14 +47,16 @@ export function SidebarNav() {
         <SidebarMenuItem key={item.label}>
           <Link href={item.href} asChild>
             <SidebarMenuButton
-              asChild // Added asChild here
+              asChild
               isActive={pathname === item.href || (item.href !== '/dashboard' && pathname.startsWith(item.href))}
               tooltip={item.label}
               aria-label={item.label}
               className="justify-start"
             >
-              <item.icon className="h-5 w-5" />
-              <span className="group-data-[collapsible=icon]:hidden">{item.label}</span>
+              <>
+                <item.icon className="h-5 w-5" />
+                <span className="group-data-[collapsible=icon]:hidden">{item.label}</span>
+              </>
             </SidebarMenuButton>
           </Link>
         </SidebarMenuItem>
@@ -62,3 +64,4 @@ export function SidebarNav() {
     </SidebarMenu>
   );
 }
+
