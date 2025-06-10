@@ -1,3 +1,4 @@
+
 "use client";
 
 import * as React from 'react';
@@ -9,12 +10,27 @@ import type { Equipment } from '@/lib/types';
 import { mockEquipment } from '@/lib/mock-data';
 import { useToast } from '@/hooks/use-toast';
 
+const EQUIPMENTS_STORAGE_KEY = 'localStorage_equipments';
+
 export default function ConferenciaPage() {
   const { toast } = useToast();
+  const [allEquipment, setAllEquipment] = React.useState<Equipment[]>([]);
   const [barcode, setBarcode] = React.useState('');
   const [checkedEquipment, setCheckedEquipment] = React.useState<Equipment | null | 'not_found'>(null);
   const [isLoading, setIsLoading] = React.useState(false);
   const inputRef = React.useRef<HTMLInputElement>(null);
+
+  React.useEffect(() => {
+    const storedEquipments = localStorage.getItem(EQUIPMENTS_STORAGE_KEY);
+    if (storedEquipments) {
+      setAllEquipment(JSON.parse(storedEquipments));
+    } else {
+      // Fallback to mockEquipment if localStorage is empty,
+      // though equipments page should initialize it.
+      setAllEquipment(mockEquipment);
+      localStorage.setItem(EQUIPMENTS_STORAGE_KEY, JSON.stringify(mockEquipment));
+    }
+  }, []);
 
   const handleCheckBarcode = async (e?: React.FormEvent<HTMLFormElement>) => {
     e?.preventDefault();
@@ -32,7 +48,7 @@ export default function ConferenciaPage() {
     // Simulate API call or data lookup
     await new Promise(resolve => setTimeout(resolve, 700)); 
 
-    const foundEquipment = mockEquipment.find(eq => eq.barcode === barcode.trim());
+    const foundEquipment = allEquipment.find(eq => eq.barcode === barcode.trim());
 
     if (foundEquipment) {
       setCheckedEquipment(foundEquipment);
@@ -138,3 +154,5 @@ export default function ConferenciaPage() {
     </div>
   );
 }
+
+    

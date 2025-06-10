@@ -1,3 +1,4 @@
+
 "use client";
 
 import * as React from 'react';
@@ -53,10 +54,13 @@ const equipmentFormSchema = z.object({
 
 type EquipmentFormValues = z.infer<typeof equipmentFormSchema>;
 
+const EQUIPMENTS_STORAGE_KEY = 'localStorage_equipments';
+const SECTORS_STORAGE_KEY = 'localStorage_sectors';
+
 export default function EquipamentosPage() {
   const { toast } = useToast();
-  const [equipments, setEquipments] = React.useState<Equipment[]>(mockEquipment);
-  const [sectors] = React.useState<Sector[]>(mockSectors);
+  const [equipments, setEquipments] = React.useState<Equipment[]>([]);
+  const [sectors, setSectors] = React.useState<Sector[]>([]);
   const [isDialogOpen, setIsDialogOpen] = React.useState(false);
   const [editingEquipment, setEditingEquipment] = React.useState<Equipment | null>(null);
   const [searchTerm, setSearchTerm] = React.useState('');
@@ -73,6 +77,26 @@ export default function EquipamentosPage() {
   });
 
   React.useEffect(() => {
+    const storedEquipments = localStorage.getItem(EQUIPMENTS_STORAGE_KEY);
+    if (storedEquipments) {
+      setEquipments(JSON.parse(storedEquipments));
+    } else {
+      setEquipments(mockEquipment);
+      localStorage.setItem(EQUIPMENTS_STORAGE_KEY, JSON.stringify(mockEquipment));
+    }
+
+    const storedSectors = localStorage.getItem(SECTORS_STORAGE_KEY);
+    if (storedSectors) {
+      setSectors(JSON.parse(storedSectors));
+    } else {
+      // Initialize sectors from mock if not in localStorage,
+      // assuming setores/page.tsx is the main place to manage/initialize them.
+      setSectors(mockSectors);
+      localStorage.setItem(SECTORS_STORAGE_KEY, JSON.stringify(mockSectors));
+    }
+  }, []);
+
+  React.useEffect(() => {
     if (editingEquipment) {
       form.reset({
         name: editingEquipment.name,
@@ -87,11 +111,11 @@ export default function EquipamentosPage() {
 
   const handleAddOrUpdateEquipment = (data: EquipmentFormValues) => {
     const sectorName = sectors.find(s => s.id === data.sectorId)?.name;
+    let updatedEquipments: Equipment[];
+
     if (editingEquipment) {
-      setEquipments(prev =>
-        prev.map(eq =>
-          eq.id === editingEquipment.id ? { ...eq, ...data, sectorName } : eq
-        )
+      updatedEquipments = equipments.map(eq =>
+        eq.id === editingEquipment.id ? { ...editingEquipment, ...data, sectorName } : eq
       );
       toast({ title: 'Sucesso!', description: 'Equipamento atualizado.' });
     } else {
@@ -100,15 +124,19 @@ export default function EquipamentosPage() {
         ...data,
         sectorName,
       };
-      setEquipments(prev => [newEquipment, ...prev]);
+      updatedEquipments = [newEquipment, ...equipments];
       toast({ title: 'Sucesso!', description: 'Equipamento adicionado.' });
     }
+    setEquipments(updatedEquipments);
+    localStorage.setItem(EQUIPMENTS_STORAGE_KEY, JSON.stringify(updatedEquipments));
     setIsDialogOpen(false);
     setEditingEquipment(null);
   };
 
   const handleDeleteEquipment = (equipmentId: string) => {
-    setEquipments(prev => prev.filter(eq => eq.id !== equipmentId));
+    const updatedEquipments = equipments.filter(eq => eq.id !== equipmentId);
+    setEquipments(updatedEquipments);
+    localStorage.setItem(EQUIPMENTS_STORAGE_KEY, JSON.stringify(updatedEquipments));
     toast({ title: 'Sucesso!', description: 'Equipamento removido.' });
   };
 
@@ -121,7 +149,7 @@ export default function EquipamentosPage() {
     const matchesSearch = eq.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
                           eq.barcode.includes(searchTerm) ||
                           (eq.description && eq.description.toLowerCase().includes(searchTerm.toLowerCase()));
-    const matchesSector = filterSector ? eq.sectorId === filterSector : true;
+    const matchesSector = (filterSector && filterSector !== 'all') ? eq.sectorId === filterSector : true;
     return matchesSearch && matchesSector;
   });
 
@@ -190,13 +218,14 @@ export default function EquipamentosPage() {
                     render={({ field }) => (
                       <FormItem>
                         <FormLabel>Setor (Opcional)</FormLabel>
-                        <Select onValueChange={field.onChange} defaultValue={field.value}>
+                        <Select onValueChange={field.onChange} value={field.value || ''} defaultValue={field.value || ''}>
                           <FormControl>
                             <SelectTrigger>
                               <SelectValue placeholder="Selecione um setor" />
                             </SelectTrigger>
                           </FormControl>
                           <SelectContent>
+                            <SelectItem value="">Nenhum setor</SelectItem>
                             {sectors.map(sector => (
                               <SelectItem key={sector.id} value={sector.id}>
                                 {sector.name}
@@ -230,7 +259,7 @@ export default function EquipamentosPage() {
               onChange={(e) => setSearchTerm(e.target.value)}
             />
           </div>
-          <Select value={filterSector} onValueChange={setFilterSector}>
+          <Select value={filterSector} onValueChange={(value) => setFilterSector(value === "all" ? undefined : value)}>
             <SelectTrigger className="w-full sm:w-[180px]">
                <Filter className="mr-2 h-4 w-4 text-muted-foreground" />
               <SelectValue placeholder="Filtrar por setor" />
@@ -307,3 +336,5 @@ export default function EquipamentosPage() {
     </Card>
   );
 }
+
+    

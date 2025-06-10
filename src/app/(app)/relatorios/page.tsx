@@ -1,3 +1,4 @@
+
 "use client";
 
 import * as React from 'react';
@@ -16,18 +17,41 @@ interface ReportData {
   type: ReportType;
   sector?: Sector;
   items: Equipment[];
+  title?: string; // Make title optional as it's derived
 }
+
+const EQUIPMENTS_STORAGE_KEY = 'localStorage_equipments';
+const SECTORS_STORAGE_KEY = 'localStorage_sectors';
 
 export default function RelatoriosPage() {
   const [reportData, setReportData] = React.useState<ReportData | null>(null);
   const [selectedSectorId, setSelectedSectorId] = React.useState<string | undefined>(undefined);
   const [searchTerm, setSearchTerm] = React.useState('');
-  const [sectors] = React.useState<Sector[]>(mockSectors);
-  const [allEquipment] = React.useState<Equipment[]>(mockEquipment);
+  const [sectors, setSectors] = React.useState<Sector[]>([]);
+  const [allEquipment, setAllEquipment] = React.useState<Equipment[]>([]);
+
+  React.useEffect(() => {
+    const storedSectors = localStorage.getItem(SECTORS_STORAGE_KEY);
+    if (storedSectors) {
+      setSectors(JSON.parse(storedSectors));
+    } else {
+      setSectors(mockSectors); // Fallback
+      localStorage.setItem(SECTORS_STORAGE_KEY, JSON.stringify(mockSectors));
+    }
+
+    const storedEquipments = localStorage.getItem(EQUIPMENTS_STORAGE_KEY);
+    if (storedEquipments) {
+      setAllEquipment(JSON.parse(storedEquipments));
+    } else {
+      setAllEquipment(mockEquipment); // Fallback
+      localStorage.setItem(EQUIPMENTS_STORAGE_KEY, JSON.stringify(mockEquipment));
+    }
+  }, []);
 
   const generateReport = (type: ReportType) => {
     let itemsToReport: Equipment[] = [];
     let reportTitle = '';
+    let reportSector: Sector | undefined = undefined;
 
     if (type === 'total') {
       itemsToReport = allEquipment;
@@ -35,19 +59,18 @@ export default function RelatoriosPage() {
     } else if (type === 'bySector' && selectedSectorId) {
       const sector = sectors.find(s => s.id === selectedSectorId);
       if (sector) {
+        reportSector = sector;
         itemsToReport = allEquipment.filter(eq => eq.sectorId === selectedSectorId);
         reportTitle = `Relatório de Inventário - Setor: ${sector.name}`;
       } else {
-        setReportData(null); // Clear previous report if sector not found
+        setReportData(null); 
         return;
       }
-      setReportData({ type, sector, items: itemsToReport, title: reportTitle });
-      return;
     } else if (type === 'bySector' && !selectedSectorId) {
        setReportData({ type, items: [], title: "Selecione um setor para gerar o relatório." });
        return;
     }
-     setReportData({ type, items: itemsToReport, title: reportTitle });
+     setReportData({ type, sector: reportSector, items: itemsToReport, title: reportTitle });
   };
 
   const filteredReportItems = reportData?.items.filter(item => 
@@ -106,7 +129,7 @@ export default function RelatoriosPage() {
                 <Download className="mr-2 h-4 w-4" /> Exportar CSV
               </Button>
             </div>
-            {filteredReportItems.length > 0 && (
+            {reportData.items.length > 0 && ( // Show search only if there's any item in the original report
               <div className="mt-4 relative w-full sm:max-w-md">
                 <Search className="absolute left-2.5 top-2.5 h-4 w-4 text-muted-foreground" />
                 <Input
@@ -145,7 +168,9 @@ export default function RelatoriosPage() {
               </div>
             ) : (
               <p className="text-center text-muted-foreground py-8">
-                {reportData.items.length === 0 ? "Nenhum equipamento para exibir neste relatório." : "Nenhum equipamento corresponde à sua busca."}
+                {reportData.items.length === 0 && reportData.type === 'bySector' && reportData.sector ? `Nenhum equipamento encontrado para o setor "${reportData.sector.name}".` : 
+                 reportData.items.length === 0 ? "Nenhum equipamento para exibir neste relatório." : 
+                 "Nenhum equipamento corresponde à sua busca."}
               </p>
             )}
           </CardContent>
@@ -169,3 +194,4 @@ declare module 'react' {
   }
 }
 
+    

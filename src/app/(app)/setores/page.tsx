@@ -1,3 +1,4 @@
+
 "use client";
 
 import * as React from 'react';
@@ -38,7 +39,7 @@ import { zodResolver } from '@hookform/resolvers/zod';
 import { useForm } from 'react-hook-form';
 import * as z from 'zod';
 import { Form, FormControl, FormField, FormItem, FormLabel, FormMessage } from '@/components/ui/form';
-import type { Sector } from '@/lib/types';
+import type { Sector, Equipment } from '@/lib/types';
 import { mockSectors } from '@/lib/mock-data';
 import { useToast } from '@/hooks/use-toast';
 
@@ -48,9 +49,13 @@ const sectorFormSchema = z.object({
 
 type SectorFormValues = z.infer<typeof sectorFormSchema>;
 
+const SECTORS_STORAGE_KEY = 'localStorage_sectors';
+const EQUIPMENTS_STORAGE_KEY = 'localStorage_equipments';
+
+
 export default function SetoresPage() {
   const { toast } = useToast();
-  const [sectors, setSectors] = React.useState<Sector[]>(mockSectors);
+  const [sectors, setSectors] = React.useState<Sector[]>([]);
   const [isDialogOpen, setIsDialogOpen] = React.useState(false);
   const [editingSector, setEditingSector] = React.useState<Sector | null>(null);
   const [searchTerm, setSearchTerm] = React.useState('');
@@ -61,6 +66,16 @@ export default function SetoresPage() {
       name: '',
     },
   });
+
+  React.useEffect(() => {
+    const storedSectors = localStorage.getItem(SECTORS_STORAGE_KEY);
+    if (storedSectors) {
+      setSectors(JSON.parse(storedSectors));
+    } else {
+      setSectors(mockSectors);
+      localStorage.setItem(SECTORS_STORAGE_KEY, JSON.stringify(mockSectors));
+    }
+  }, []);
   
   React.useEffect(() => {
     if (editingSector) {
@@ -72,26 +87,42 @@ export default function SetoresPage() {
 
 
   const handleAddOrUpdateSector = (data: SectorFormValues) => {
+    let updatedSectors: Sector[];
     if (editingSector) {
-      setSectors(prev =>
-        prev.map(sec => (sec.id === editingSector.id ? { ...sec, ...data } : sec))
-      );
+      updatedSectors = sectors.map(sec => (sec.id === editingSector.id ? { ...editingSector, ...data } : sec));
       toast({ title: 'Sucesso!', description: 'Setor atualizado.' });
     } else {
       const newSector: Sector = {
         id: `sector-${Date.now()}`,
         ...data,
       };
-      setSectors(prev => [newSector, ...prev]);
+      updatedSectors = [newSector, ...sectors];
       toast({ title: 'Sucesso!', description: 'Setor adicionado.' });
     }
+    setSectors(updatedSectors);
+    localStorage.setItem(SECTORS_STORAGE_KEY, JSON.stringify(updatedSectors));
     setIsDialogOpen(false);
     setEditingSector(null);
   };
 
   const handleDeleteSector = (sectorId: string) => {
-    // Add check if sector is in use by any equipment before deleting
-    setSectors(prev => prev.filter(sec => sec.id !== sectorId));
+    const equipmentsData = localStorage.getItem(EQUIPMENTS_STORAGE_KEY);
+    const currentEquipments: Equipment[] = equipmentsData ? JSON.parse(equipmentsData) : [];
+    
+    const isSectorInUse = currentEquipments.some(eq => eq.sectorId === sectorId);
+
+    if (isSectorInUse) {
+      toast({
+        variant: "destructive",
+        title: "Erro ao Excluir Setor",
+        description: "Este setor está atribuído a um ou mais equipamentos. Remova a atribuição antes de excluir.",
+      });
+      return;
+    }
+    
+    const updatedSectors = sectors.filter(sec => sec.id !== sectorId);
+    setSectors(updatedSectors);
+    localStorage.setItem(SECTORS_STORAGE_KEY, JSON.stringify(updatedSectors));
     toast({ title: 'Sucesso!', description: 'Setor removido.' });
   };
 
@@ -213,3 +244,5 @@ export default function SetoresPage() {
     </Card>
   );
 }
+
+    
