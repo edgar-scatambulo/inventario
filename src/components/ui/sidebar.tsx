@@ -544,13 +544,13 @@ const SidebarMenuButton = React.forwardRef<
 >(
   (
     {
-      asChild: localAsChild = false, // Renamed to avoid confusion with asChild from restProps
+      asChild: localAsChild = false, 
       isActive = false,
       variant = "default",
       size = "default",
       tooltip,
       className,
-      children, // Explicitly include children to pass to Comp
+      children, 
       ...restProps
     },
     ref
@@ -558,8 +558,10 @@ const SidebarMenuButton = React.forwardRef<
     const Comp = localAsChild ? Slot : "button"
     const { isMobile, state } = useSidebar()
 
-    // Ensure 'asChild' from restProps is not passed to Comp
-    const { asChild: _asChildFromRest, ...finalPropsToSpread } = restProps
+    // Explicitly remove `asChild` from `restProps` to prevent it from being spread
+    // onto the underlying Comp (Slot or button). This is crucial if a parent component
+    // (like Link or TooltipTrigger) passes its own `asChild` prop down.
+    const { asChild: incomingAsChild, ...finalPropsToSpread } = restProps
 
     const buttonElement = (
       <Comp
@@ -764,5 +766,3 @@ export {
   SidebarTrigger,
   useSidebar,
 }
-
-    
