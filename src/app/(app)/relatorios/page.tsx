@@ -10,6 +10,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@
 import { Input } from '@/components/ui/input';
 import type { Equipment, Sector } from '@/lib/types';
 import { mockEquipment, mockSectors } from '@/lib/mock-data';
+import { useToast } from '@/hooks/use-toast';
 
 type ReportType = 'total' | 'bySector' | 'notConferenced';
 
@@ -24,6 +25,7 @@ const EQUIPMENTS_STORAGE_KEY = 'localStorage_equipments';
 const SECTORS_STORAGE_KEY = 'localStorage_sectors';
 
 export default function RelatoriosPage() {
+  const { toast } = useToast();
   const [reportData, setReportData] = React.useState<ReportData | null>(null);
   const [selectedSectorId, setSelectedSectorId] = React.useState<string | undefined>(undefined);
   const [searchTerm, setSearchTerm] = React.useState('');
@@ -74,7 +76,7 @@ export default function RelatoriosPage() {
       reportTitle = 'Relatório de Equipamentos Não Conferidos';
     }
      setReportData({ type, sector: reportSector, items: itemsToReport, title: reportTitle });
-     setSearchTerm(''); // Reset search term when generating a new report
+     setSearchTerm(''); 
   };
 
   const filteredReportItems = reportData?.items.filter(item => 
@@ -82,6 +84,22 @@ export default function RelatoriosPage() {
     item.barcode.includes(searchTerm) ||
     (item.description && item.description.toLowerCase().includes(searchTerm.toLowerCase()))
   ) || [];
+
+  const handleExportClick = () => {
+    if (filteredReportItems.length === 0) {
+      toast({
+        title: "Exportação Indisponível",
+        description: "Não há dados para exportar neste relatório.",
+        variant: "destructive",
+      });
+      return;
+    }
+    toast({
+      title: "Exportação Indisponível",
+      description: "A funcionalidade de exportar dados CSV ainda está em desenvolvimento.",
+      variant: "default",
+    });
+  };
 
   return (
     <div className="space-y-8">
@@ -133,7 +151,7 @@ export default function RelatoriosPage() {
           <CardHeader>
             <div className="flex flex-col sm:flex-row justify-between items-center gap-4">
               <CardTitle className="text-xl">{reportData.title || "Relatório de Inventário"}</CardTitle>
-              <Button variant="outline" size="sm" disabled={filteredReportItems.length === 0}>
+              <Button variant="outline" size="sm" onClick={handleExportClick} disabled={filteredReportItems.length === 0}>
                 <Download className="mr-2 h-4 w-4" /> Exportar CSV
               </Button>
             </div>
@@ -211,5 +229,3 @@ declare module 'react' {
     title?: string;
   }
 }
-
-    

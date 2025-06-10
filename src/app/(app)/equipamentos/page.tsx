@@ -74,7 +74,7 @@ export default function EquipamentosPage() {
       name: '',
       description: '',
       barcode: '',
-      sectorId: '', // Default to empty string, which will show placeholder
+      sectorId: '',
     },
   });
 
@@ -102,7 +102,7 @@ export default function EquipamentosPage() {
         name: editingEquipment.name,
         description: editingEquipment.description || '',
         barcode: editingEquipment.barcode,
-        sectorId: editingEquipment.sectorId || '', // if undefined/null, reset to '', shows placeholder
+        sectorId: editingEquipment.sectorId || '', 
       });
     } else {
       form.reset({ name: '', description: '', barcode: '', sectorId: '' });
@@ -126,7 +126,6 @@ export default function EquipamentosPage() {
             barcode: data.barcode, 
             sectorId: finalSectorId, 
             sectorName 
-            // lastCheckedTimestamp remains unchanged on edit unless explicitly updated
           } 
         : eq
       );
@@ -139,7 +138,6 @@ export default function EquipamentosPage() {
         barcode: data.barcode,
         sectorId: finalSectorId,
         sectorName,
-        // New equipment doesn't have lastCheckedTimestamp initially
       };
       updatedEquipments = [newEquipment, ...equipments];
       toast({ title: 'Sucesso!', description: 'Equipamento adicionado.' });
@@ -169,6 +167,14 @@ export default function EquipamentosPage() {
     const matchesSector = (filterSector && filterSector !== 'all') ? eq.sectorId === filterSector : true;
     return matchesSearch && matchesSector;
   });
+
+  const handleExportClick = () => {
+    toast({
+      title: "Exportação Indisponível",
+      description: "A funcionalidade de exportar dados ainda está em desenvolvimento.",
+      variant: "default", 
+    });
+  };
 
   return (
     <Card className="shadow-lg">
@@ -237,7 +243,7 @@ export default function EquipamentosPage() {
                         <FormLabel>Setor (Opcional)</FormLabel>
                         <Select 
                           onValueChange={field.onChange} 
-                          value={field.value || ''} // Shows placeholder if field.value is undefined or ''
+                          value={field.value || ''}
                         >
                           <FormControl>
                             <SelectTrigger>
@@ -291,7 +297,7 @@ export default function EquipamentosPage() {
               ))}
             </SelectContent>
           </Select>
-          <Button variant="outline">
+          <Button variant="outline" onClick={handleExportClick}>
             <FileDown className="mr-2 h-4 w-4" /> Exportar
           </Button>
         </div>
@@ -361,6 +367,3 @@ export default function EquipamentosPage() {
     </Card>
   );
 }
-
-
-    
