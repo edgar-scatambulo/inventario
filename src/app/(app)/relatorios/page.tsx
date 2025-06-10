@@ -2,7 +2,7 @@
 "use client";
 
 import * as React from 'react';
-import { FileText, Download, Filter, Search, Building } from 'lucide-react';
+import { FileText, Download, Filter, Search, Building, ListX } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
@@ -11,13 +11,13 @@ import { Input } from '@/components/ui/input';
 import type { Equipment, Sector } from '@/lib/types';
 import { mockEquipment, mockSectors } from '@/lib/mock-data';
 
-type ReportType = 'total' | 'bySector';
+type ReportType = 'total' | 'bySector' | 'notConferenced';
 
 interface ReportData {
   type: ReportType;
   sector?: Sector;
   items: Equipment[];
-  title?: string; // Make title optional as it's derived
+  title?: string; 
 }
 
 const EQUIPMENTS_STORAGE_KEY = 'localStorage_equipments';
@@ -35,7 +35,7 @@ export default function RelatoriosPage() {
     if (storedSectors) {
       setSectors(JSON.parse(storedSectors));
     } else {
-      setSectors(mockSectors); // Fallback
+      setSectors(mockSectors); 
       localStorage.setItem(SECTORS_STORAGE_KEY, JSON.stringify(mockSectors));
     }
 
@@ -43,7 +43,7 @@ export default function RelatoriosPage() {
     if (storedEquipments) {
       setAllEquipment(JSON.parse(storedEquipments));
     } else {
-      setAllEquipment(mockEquipment); // Fallback
+      setAllEquipment(mockEquipment); 
       localStorage.setItem(EQUIPMENTS_STORAGE_KEY, JSON.stringify(mockEquipment));
     }
   }, []);
@@ -69,8 +69,12 @@ export default function RelatoriosPage() {
     } else if (type === 'bySector' && !selectedSectorId) {
        setReportData({ type, items: [], title: "Selecione um setor para gerar o relatório." });
        return;
+    } else if (type === 'notConferenced') {
+      itemsToReport = allEquipment.filter(eq => !eq.lastCheckedTimestamp);
+      reportTitle = 'Relatório de Equipamentos Não Conferidos';
     }
      setReportData({ type, sector: reportSector, items: itemsToReport, title: reportTitle });
+     setSearchTerm(''); // Reset search term when generating a new report
   };
 
   const filteredReportItems = reportData?.items.filter(item => 
@@ -93,13 +97,17 @@ export default function RelatoriosPage() {
                 Visualize e exporte o estado atual do seu inventário.
               </CardDescription>
             </div>
-            <div className="flex flex-col sm:flex-row gap-3 w-full md:w-auto">
+            <div className="flex flex-col sm:flex-row gap-3 w-full md:w-auto flex-wrap justify-end">
               <Button onClick={() => generateReport('total')} className="w-full sm:w-auto" variant="default">
                 Inventário Total
               </Button>
+              <Button onClick={() => generateReport('notConferenced')} className="w-full sm:w-auto" variant="outline">
+                <ListX className="mr-2 h-4 w-4" />
+                Não Conferidos
+              </Button>
               <div className="flex gap-3 w-full sm:w-auto">
                 <Select onValueChange={setSelectedSectorId} value={selectedSectorId}>
-                  <SelectTrigger className="flex-1 min-w-[200px]" aria-label="Selecionar Setor">
+                  <SelectTrigger className="flex-1 min-w-[180px] sm:min-w-[200px]" aria-label="Selecionar Setor">
                     <Building className="mr-2 h-4 w-4 text-muted-foreground" />
                     <SelectValue placeholder="Selecione um setor" />
                   </SelectTrigger>
@@ -129,7 +137,7 @@ export default function RelatoriosPage() {
                 <Download className="mr-2 h-4 w-4" /> Exportar CSV
               </Button>
             </div>
-            {reportData.items.length > 0 && ( // Show search only if there's any item in the original report
+            {reportData.items.length > 0 && ( 
               <div className="mt-4 relative w-full sm:max-w-md">
                 <Search className="absolute left-2.5 top-2.5 h-4 w-4 text-muted-foreground" />
                 <Input
@@ -150,8 +158,9 @@ export default function RelatoriosPage() {
                     <TableRow>
                       <TableHead>Nome do Equipamento</TableHead>
                       <TableHead>Código de Barras</TableHead>
-                      {reportData.type === 'total' && <TableHead>Setor</TableHead>}
+                      {(reportData.type === 'total' || reportData.type === 'notConferenced') && <TableHead>Setor</TableHead>}
                       <TableHead className="hidden md:table-cell">Descrição</TableHead>
+                       <TableHead className="hidden sm:table-cell">Última Conferência</TableHead>
                     </TableRow>
                   </TableHeader>
                   <TableBody>
@@ -159,8 +168,13 @@ export default function RelatoriosPage() {
                       <TableRow key={item.id}>
                         <TableCell className="font-medium">{item.name}</TableCell>
                         <TableCell>{item.barcode}</TableCell>
-                        {reportData.type === 'total' && <TableCell>{item.sectorName || 'N/A'}</TableCell>}
+                        {(reportData.type === 'total' || reportData.type === 'notConferenced') && <TableCell>{item.sectorName || 'N/A'}</TableCell>}
                         <TableCell className="hidden md:table-cell max-w-xs truncate">{item.description || 'N/A'}</TableCell>
+                        <TableCell className="hidden sm:table-cell">
+                          {item.lastCheckedTimestamp 
+                            ? new Date(item.lastCheckedTimestamp).toLocaleString() 
+                            : <span className="text-muted-foreground italic">Não conferido</span>}
+                        </TableCell>
                       </TableRow>
                     ))}
                   </TableBody>
@@ -168,9 +182,13 @@ export default function RelatoriosPage() {
               </div>
             ) : (
               <p className="text-center text-muted-foreground py-8">
-                {reportData.items.length === 0 && reportData.type === 'bySector' && reportData.sector ? `Nenhum equipamento encontrado para o setor "${reportData.sector.name}".` : 
-                 reportData.items.length === 0 ? "Nenhum equipamento para exibir neste relatório." : 
-                 "Nenhum equipamento corresponde à sua busca."}
+                {reportData.items.length === 0 && reportData.type === 'notConferenced' ?
+                  "Nenhum equipamento não conferido encontrado." :
+                reportData.items.length === 0 && reportData.type === 'bySector' && reportData.sector ? 
+                  `Nenhum equipamento encontrado para o setor "${reportData.sector.name}".` : 
+                reportData.items.length === 0 ? 
+                  "Nenhum equipamento para exibir neste relatório." : 
+                  "Nenhum equipamento corresponde à sua busca."}
               </p>
             )}
           </CardContent>
@@ -181,13 +199,13 @@ export default function RelatoriosPage() {
          <div className="text-center py-12">
             <FileText className="mx-auto h-20 w-20 text-muted-foreground/50 mb-4" />
             <p className="text-lg text-muted-foreground">Selecione um tipo de relatório para começar.</p>
-            <p className="text-sm text-muted-foreground">Você pode gerar um relatório do inventário total ou filtrar por um setor específico.</p>
+            <p className="text-sm text-muted-foreground">Você pode gerar um relatório do inventário total, por setor ou listar os não conferidos.</p>
         </div>
       )}
     </div>
   );
 }
-// Add a title property to ReportData interface if used directly
+
 declare module 'react' {
   interface HTMLAttributes<T> extends AriaAttributes, DOMAttributes<T> {
     title?: string;
