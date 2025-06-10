@@ -56,6 +56,7 @@ type EquipmentFormValues = z.infer<typeof equipmentFormSchema>;
 
 const EQUIPMENTS_STORAGE_KEY = 'localStorage_equipments';
 const SECTORS_STORAGE_KEY = 'localStorage_sectors';
+const NO_SECTOR_VALUE = "NO_SECTOR_ASSIGNED_VALUE";
 
 export default function EquipamentosPage() {
   const { toast } = useToast();
@@ -72,7 +73,7 @@ export default function EquipamentosPage() {
       name: '',
       description: '',
       barcode: '',
-      sectorId: '',
+      sectorId: '', // Default to empty string, which will show placeholder
     },
   });
 
@@ -89,8 +90,6 @@ export default function EquipamentosPage() {
     if (storedSectors) {
       setSectors(JSON.parse(storedSectors));
     } else {
-      // Initialize sectors from mock if not in localStorage,
-      // assuming setores/page.tsx is the main place to manage/initialize them.
       setSectors(mockSectors);
       localStorage.setItem(SECTORS_STORAGE_KEY, JSON.stringify(mockSectors));
     }
@@ -100,9 +99,9 @@ export default function EquipamentosPage() {
     if (editingEquipment) {
       form.reset({
         name: editingEquipment.name,
-        description: editingEquipment.description,
+        description: editingEquipment.description || '',
         barcode: editingEquipment.barcode,
-        sectorId: editingEquipment.sectorId,
+        sectorId: editingEquipment.sectorId || '', // if undefined/null, reset to '', shows placeholder
       });
     } else {
       form.reset({ name: '', description: '', barcode: '', sectorId: '' });
@@ -110,18 +109,33 @@ export default function EquipamentosPage() {
   }, [editingEquipment, form, isDialogOpen]);
 
   const handleAddOrUpdateEquipment = (data: EquipmentFormValues) => {
-    const sectorName = sectors.find(s => s.id === data.sectorId)?.name;
+    const finalSectorId = (data.sectorId === NO_SECTOR_VALUE || data.sectorId === '')
+                            ? undefined
+                            : data.sectorId;
+
+    const sectorName = sectors.find(s => s.id === finalSectorId)?.name;
     let updatedEquipments: Equipment[];
 
     if (editingEquipment) {
       updatedEquipments = equipments.map(eq =>
-        eq.id === editingEquipment.id ? { ...editingEquipment, ...data, sectorName } : eq
+        eq.id === editingEquipment.id 
+        ? { ...editingEquipment, 
+            name: data.name, 
+            description: data.description, 
+            barcode: data.barcode, 
+            sectorId: finalSectorId, 
+            sectorName 
+          } 
+        : eq
       );
       toast({ title: 'Sucesso!', description: 'Equipamento atualizado.' });
     } else {
       const newEquipment: Equipment = {
         id: `equip-${Date.now()}`,
-        ...data,
+        name: data.name,
+        description: data.description,
+        barcode: data.barcode,
+        sectorId: finalSectorId,
         sectorName,
       };
       updatedEquipments = [newEquipment, ...equipments];
@@ -193,7 +207,7 @@ export default function EquipamentosPage() {
                       <FormItem>
                         <FormLabel>Descrição (Opcional)</FormLabel>
                         <FormControl>
-                          <Textarea placeholder="Ex: i7, 16GB RAM, 512GB SSD, Placa de vídeo RTX 3050" {...field} />
+                          <Textarea placeholder="Ex: i7, 16GB RAM, 512GB SSD, Placa de vídeo RTX 3050" {...field} value={field.value ?? ''} />
                         </FormControl>
                         <FormMessage />
                       </FormItem>
@@ -218,14 +232,17 @@ export default function EquipamentosPage() {
                     render={({ field }) => (
                       <FormItem>
                         <FormLabel>Setor (Opcional)</FormLabel>
-                        <Select onValueChange={field.onChange} value={field.value || ''} defaultValue={field.value || ''}>
+                        <Select 
+                          onValueChange={field.onChange} 
+                          value={field.value || ''} // Shows placeholder if field.value is undefined or ''
+                        >
                           <FormControl>
                             <SelectTrigger>
                               <SelectValue placeholder="Selecione um setor" />
                             </SelectTrigger>
                           </FormControl>
                           <SelectContent>
-                            <SelectItem value="">Nenhum setor</SelectItem>
+                            <SelectItem value={NO_SECTOR_VALUE}>Nenhum setor</SelectItem>
                             {sectors.map(sector => (
                               <SelectItem key={sector.id} value={sector.id}>
                                 {sector.name}
@@ -259,7 +276,7 @@ export default function EquipamentosPage() {
               onChange={(e) => setSearchTerm(e.target.value)}
             />
           </div>
-          <Select value={filterSector} onValueChange={(value) => setFilterSector(value === "all" ? undefined : value)}>
+          <Select value={filterSector || "all"} onValueChange={(value) => setFilterSector(value === "all" ? undefined : value)}>
             <SelectTrigger className="w-full sm:w-[180px]">
                <Filter className="mr-2 h-4 w-4 text-muted-foreground" />
               <SelectValue placeholder="Filtrar por setor" />
@@ -336,5 +353,3 @@ export default function EquipamentosPage() {
     </Card>
   );
 }
-
-    

@@ -1,7 +1,7 @@
 export interface Equipment {
   id: string;
   name: string;
-  description: string;
+  description?: string; // Made optional
   barcode: string;
   sectorId?: string;
   sectorName?: string; // For display purposes
