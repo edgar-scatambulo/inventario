@@ -1,3 +1,4 @@
+
 export interface Equipment {
   id: string;
   name: string;
@@ -5,6 +6,7 @@ export interface Equipment {
   barcode: string;
   sectorId?: string;
   sectorName?: string; // For display purposes
+  lastCheckedTimestamp?: number; // Timestamp of the last successful conference
 }
 
 export interface Sector {

@@ -25,8 +25,6 @@ export default function ConferenciaPage() {
     if (storedEquipments) {
       setAllEquipment(JSON.parse(storedEquipments));
     } else {
-      // Fallback to mockEquipment if localStorage is empty,
-      // though equipments page should initialize it.
       setAllEquipment(mockEquipment);
       localStorage.setItem(EQUIPMENTS_STORAGE_KEY, JSON.stringify(mockEquipment));
     }
@@ -44,17 +42,25 @@ export default function ConferenciaPage() {
     }
 
     setIsLoading(true);
-    setCheckedEquipment(null); 
-    // Simulate API call or data lookup
-    await new Promise(resolve => setTimeout(resolve, 700)); 
+    setCheckedEquipment(null);
+    await new Promise(resolve => setTimeout(resolve, 700));
 
     const foundEquipment = allEquipment.find(eq => eq.barcode === barcode.trim());
 
     if (foundEquipment) {
-      setCheckedEquipment(foundEquipment);
+      const now = Date.now();
+      const updatedEquipments = allEquipment.map(eq =>
+        eq.id === foundEquipment.id
+          ? { ...eq, lastCheckedTimestamp: now }
+          : eq
+      );
+      setAllEquipment(updatedEquipments);
+      localStorage.setItem(EQUIPMENTS_STORAGE_KEY, JSON.stringify(updatedEquipments));
+
+      setCheckedEquipment({ ...foundEquipment, lastCheckedTimestamp: now });
       toast({
-        title: 'Equipamento Encontrado!',
-        description: `${foundEquipment.name} localizado no setor ${foundEquipment.sectorName || 'N/A'}.`,
+        title: 'Equipamento Conferido!',
+        description: `${foundEquipment.name} localizado no setor ${foundEquipment.sectorName || 'N/A'}. Conferência registrada.`,
         className: 'bg-green-100 border-green-500 text-green-700 dark:bg-green-900 dark:text-green-200 dark:border-green-700',
       });
     } else {
@@ -66,8 +72,8 @@ export default function ConferenciaPage() {
       });
     }
     setIsLoading(false);
-    setBarcode(''); // Clear input after search
-    inputRef.current?.focus(); // Focus input for next scan
+    setBarcode(''); 
+    inputRef.current?.focus();
   };
 
   const handleReset = () => {
@@ -136,12 +142,15 @@ export default function ConferenciaPage() {
                 <div className="space-y-3 text-green-700 dark:text-green-300">
                    <div className="flex flex-col items-center text-center">
                     <CheckCircle2 className="h-12 w-12 mb-3" />
-                    <h3 className="text-xl font-semibold">Equipamento Encontrado!</h3>
+                    <h3 className="text-xl font-semibold">Equipamento Encontrado e Conferido!</h3>
                   </div>
                   <div><strong>Nome:</strong> {checkedEquipment.name}</div>
                   <div><strong>Descrição:</strong> {checkedEquipment.description || 'N/A'}</div>
                   <div><strong>Código de Barras:</strong> {checkedEquipment.barcode}</div>
                   <div><strong>Setor:</strong> {checkedEquipment.sectorName || 'Não atribuído'}</div>
+                  {checkedEquipment.lastCheckedTimestamp && (
+                     <div><strong>Última Conferência:</strong> {new Date(checkedEquipment.lastCheckedTimestamp).toLocaleString()}</div>
+                  )}
                 </div>
               )}
                <Button onClick={handleReset} variant="outline" className="w-full mt-6">
@@ -154,5 +163,3 @@ export default function ConferenciaPage() {
     </div>
   );
 }
-
-    

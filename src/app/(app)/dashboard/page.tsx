@@ -4,10 +4,20 @@ import * as React from 'react';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import Link from "next/link";
-import { Package, Warehouse, ScanBarcode, FileText, ArrowRight } from "lucide-react";
+import { Package, Warehouse, ScanBarcode, FileText, ArrowRight, PieChart as PieChartIcon } from "lucide-react";
 import Image from "next/image";
 import type { Equipment, Sector } from '@/lib/types';
-import { mockEquipment, mockSectors } from '@/lib/mock-data'; // Fallback data
+import { mockEquipment, mockSectors } from '@/lib/mock-data'; 
+
+import { PieChart, Pie, Cell, Tooltip, Legend } from 'recharts';
+import {
+  ChartContainer,
+  ChartTooltip,
+  ChartTooltipContent,
+  ChartLegend,
+  ChartLegendContent,
+  type ChartConfig
+} from "@/components/ui/chart";
 
 const quickAccessItems = [
   { title: "Cadastrar Equipamento", href: "/equipamentos", icon: Package, description: "Adicione novos itens ao inventário." },
@@ -19,23 +29,68 @@ const quickAccessItems = [
 const EQUIPMENTS_STORAGE_KEY = 'localStorage_equipments';
 const SECTORS_STORAGE_KEY = 'localStorage_sectors';
 
+const conferenceChartConfig = {
+  conferidos: {
+    label: "Conferidos",
+    color: "hsl(var(--chart-1))",
+  },
+  naoConferidos: {
+    label: "Não Conferidos",
+    color: "hsl(var(--chart-2))",
+  },
+} satisfies ChartConfig;
+
+const isTimestampToday = (timestamp?: number): boolean => {
+  if (!timestamp) return false;
+  const date = new Date(timestamp);
+  const today = new Date();
+  return (
+    date.getDate() === today.getDate() &&
+    date.getMonth() === today.getMonth() &&
+    date.getFullYear() === today.getFullYear()
+  );
+};
+
 export default function DashboardPage() {
   const [totalEquipments, setTotalEquipments] = React.useState<number>(0);
   const [totalSectors, setTotalSectors] = React.useState<number>(0);
+  const [itemsCheckedTodayCount, setItemsCheckedTodayCount] = React.useState<number>(0);
+  const [conferenceChartData, setConferenceChartData] = React.useState<Array<{ category: keyof typeof conferenceChartConfig; value: number; fill: string }>>([]);
 
   React.useEffect(() => {
+    let equipments: Equipment[] = [];
     const storedEquipments = localStorage.getItem(EQUIPMENTS_STORAGE_KEY);
     if (storedEquipments) {
       try {
-        const equipments: Equipment[] = JSON.parse(storedEquipments);
+        equipments = JSON.parse(storedEquipments);
         setTotalEquipments(equipments.length);
       } catch (e) {
         console.error("Failed to parse equipments from localStorage", e);
-        setTotalEquipments(mockEquipment.length); // Fallback
+        equipments = mockEquipment; // Fallback
+        setTotalEquipments(mockEquipment.length);
       }
     } else {
-      setTotalEquipments(mockEquipment.length); // Fallback if nothing in localStorage
+      equipments = mockEquipment; // Fallback
+      setTotalEquipments(mockEquipment.length); 
     }
+
+    let checkedToday = 0;
+    let totalConferenced = 0;
+    equipments.forEach(eq => {
+      if (eq.lastCheckedTimestamp) {
+        totalConferenced++;
+        if (isTimestampToday(eq.lastCheckedTimestamp)) {
+          checkedToday++;
+        }
+      }
+    });
+    setItemsCheckedTodayCount(checkedToday);
+    const totalNotConferenced = equipments.length - totalConferenced;
+    
+    setConferenceChartData([
+      { category: "conferidos", value: totalConferenced, fill: conferenceChartConfig.conferidos.color },
+      { category: "naoConferidos", value: totalNotConferenced, fill: conferenceChartConfig.naoConferidos.color },
+    ]);
 
     const storedSectors = localStorage.getItem(SECTORS_STORAGE_KEY);
     if (storedSectors) {
@@ -94,8 +149,8 @@ export default function DashboardPage() {
         </div>
       </section>
 
-      <section className="grid grid-cols-1 gap-6">
-        <Card className="shadow-md">
+      <div className="grid grid-cols-1 gap-6 lg:grid-cols-3">
+        <Card className="shadow-md lg:col-span-1">
           <CardHeader>
             <CardTitle>Resumo do Inventário</CardTitle>
             <CardDescription>Visão geral dos seus ativos.</CardDescription>
@@ -111,15 +166,65 @@ export default function DashboardPage() {
             </div>
              <div className="flex justify-between items-center p-3 bg-accent/10 rounded-md border border-accent">
               <span className="font-medium text-accent-foreground">Itens Conferidos Hoje:</span>
-              {/* TODO: Implement dynamic count for items checked today */}
-              <span className="text-xl font-bold text-accent-foreground">25</span> {/* Static Mock Data */}
+              <span className="text-xl font-bold text-accent-foreground">{itemsCheckedTodayCount}</span>
             </div>
              <Button asChild className="w-full mt-4">
               <Link href="/equipamentos">Ver Inventário Completo</Link>
             </Button>
           </CardContent>
         </Card>
-      </section>
+
+        <Card className="shadow-md lg:col-span-2">
+          <CardHeader>
+            <CardTitle className="flex items-center">
+              <PieChartIcon className="mr-2 h-6 w-6 text-primary" />
+              Status da Conferência
+            </CardTitle>
+            <CardDescription>Equipamentos conferidos vs. não conferidos no inventário total.</CardDescription>
+          </CardHeader>
+          <CardContent>
+            {totalEquipments > 0 ? (
+              <ChartContainer config={conferenceChartConfig} className="mx-auto aspect-square max-h-[280px] sm:max-h-[300px]">
+                <PieChart>
+                  <ChartTooltip
+                    cursor={false}
+                    content={<ChartTooltipContent hideLabel />}
+                  />
+                  <Pie
+                    data={conferenceChartData}
+                    dataKey="value"
+                    nameKey="category"
+                    innerRadius={50}
+                    outerRadius={90}
+                    strokeWidth={2}
+                    labelLine={false}
+                    label={({ Pct, name, value }) => {
+                       if (value === 0) return null; // Don't show label for zero value slices
+                       const percentage = (Pct * 100).toFixed(0) + '%';
+                       const configEntry = conferenceChartConfig[name as keyof typeof conferenceChartConfig];
+                       return `${configEntry.label}: ${percentage}`; 
+                    }}
+                  >
+                    {conferenceChartData.map((entry) => (
+                      <Cell key={`cell-${entry.category}`} fill={entry.fill} className="focus:outline-none focus:ring-2 focus:ring-ring focus:ring-offset-2" />
+                    ))}
+                  </Pie>
+                  <ChartLegend
+                    content={<ChartLegendContent nameKey="category" />}
+                    className="-translate-y-2"
+                  />
+                </PieChart>
+              </ChartContainer>
+            ) : (
+              <div className="flex flex-col items-center justify-center h-[280px] text-center">
+                <PieChartIcon className="h-16 w-16 text-muted-foreground/50 mb-4" />
+                <p className="text-muted-foreground">Nenhum equipamento cadastrado.</p>
+                <p className="text-sm text-muted-foreground">Adicione equipamentos para ver o status da conferência.</p>
+              </div>
+            )}
+          </CardContent>
+        </Card>
+      </div>
     </div>
   );
 }
