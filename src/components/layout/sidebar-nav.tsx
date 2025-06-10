@@ -53,10 +53,10 @@ export function SidebarNav() {
               aria-label={item.label}
               className="justify-start"
             >
-              <>
+              <span>
                 <item.icon className="h-5 w-5" />
                 <span className="group-data-[collapsible=icon]:hidden">{item.label}</span>
-              </>
+              </span>
             </SidebarMenuButton>
           </Link>
         </SidebarMenuItem>
