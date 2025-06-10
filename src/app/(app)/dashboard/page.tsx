@@ -7,7 +7,7 @@ import Image from "next/image";
 
 const quickAccessItems = [
   { title: "Cadastrar Equipamento", href: "/equipamentos", icon: Package, description: "Adicione novos itens ao inventário." },
-  { title: "Gerenciar Setores", href: "/setores", icon: Warehouse, description: "Organize seus equipamentos por local." },
+  { title: "Gerenciar Setores", href: "/setores", icon: Warehouse, description: "Equipamentos por setor." },
   { title: "Conferir Inventário", href: "/conferencia", icon: ScanBarcode, description: "Realize a checagem rápida de itens." },
   { title: "Ver Relatórios", href: "/relatorios", icon: FileText, description: "Visualize o status completo do inventário." },
 ];
