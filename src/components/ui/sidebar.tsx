@@ -108,11 +108,11 @@ const SidebarProvider = React.forwardRef<
       return () => window.removeEventListener("keydown", handleKeyDown)
     }, [toggleSidebar])
 
-    const state = open ? "expanded" : "collapsed"
+    const sidebarState = open ? "expanded" : "collapsed" // Renamed to avoid conflict
 
     const contextValue = React.useMemo<SidebarContext>(
       () => ({
-        state,
+        state: sidebarState,
         open,
         setOpen,
         isMobile,
@@ -120,7 +120,7 @@ const SidebarProvider = React.forwardRef<
         setOpenMobile,
         toggleSidebar,
       }),
-      [state, open, setOpen, isMobile, openMobile, setOpenMobile, toggleSidebar]
+      [sidebarState, open, setOpen, isMobile, openMobile, setOpenMobile, toggleSidebar]
     )
 
     return (
@@ -525,35 +525,37 @@ const sidebarMenuButtonVariants = cva(
 )
 
 const SidebarMenuButton = React.forwardRef<
-  HTMLButtonElement,
-  React.ComponentProps<"button"> & {
-    asChild?: boolean; 
+  HTMLButtonElement, // This should be flexible based on Comp, but button is a common case
+  React.ComponentProps<"button"> & { // Fallback to button props
+    asChild?: boolean;
     isActive?: boolean;
     tooltip?: string | React.ComponentProps<typeof TooltipContent>;
   } & VariantProps<typeof sidebarMenuButtonVariants>
 >(
   (
-    {
-      asChild: useSlotSemantics = false, 
+    props,
+    ref
+  ) => {
+    // Destructure props passed TO SidebarMenuButton
+    const { 
+      asChild: useSlotSemantics = false, // This is SidebarMenuButton's OWN asChild prop
       isActive = false,
       variant = "default",
       size = "default",
       tooltip,
-      className, 
-      children,  
-      ...restProps 
-    },
-    ref
-  ) => {
+      className,                  // className for SidebarMenuButton itself
+      children: buttonContentFromProps, // children for SidebarMenuButton (the span)
+      ...parentRestProps          // ALL OTHER props from parent (e.g. Link), this includes Link's href, onClick, AND Link's asChild
+    } = props;
+
+    const { isMobile, state: sidebarState } = useSidebar();
+
+    // From the parent's rest props, remove 'asChild' if it exists.
+    // These are the props that will be passed to the underlying Slot/button.
+    // Using a generic name for the discarded asChild prop from parent.
+    const { asChild: _discardedAsChildFromParent, ...propsToPassToUnderlyingComp } = parentRestProps; 
+
     const Comp = useSlotSemantics ? Slot : "button"; 
-    const { isMobile, state } = useSidebar();
-
-    // Explicitly destructure `asChild` from `restProps` to prevent it from being passed to `Comp`.
-    // `asChildFromParent` will capture the `asChild` prop if it was passed by a parent (e.g., Link).
-    // `propsToPassToComp` will contain all other props from `restProps`.
-    const { asChild: asChildFromParent, ...propsToPassToComp } = restProps;
-
-    const buttonContent = children;
 
     const buttonElement = (
       <Comp
@@ -561,10 +563,10 @@ const SidebarMenuButton = React.forwardRef<
         data-sidebar="menu-button"
         data-size={size}
         data-active={isActive} 
-        className={cn(sidebarMenuButtonVariants({ variant, size }), className)} 
-        {...propsToPassToComp} 
+        className={cn(sidebarMenuButtonVariants({ variant, size, className }))}
+        {...propsToPassToUnderlyingComp} 
       >
-        {buttonContent}
+        {buttonContentFromProps}
       </Comp>
     );
 
@@ -572,18 +574,18 @@ const SidebarMenuButton = React.forwardRef<
       return buttonElement;
     }
 
-    const tooltipProps = typeof tooltip === "string" ? { children: tooltip } : tooltip;
+    const tooltipContentProps = typeof tooltip === "string" ? { children: tooltip } : tooltip;
 
     return (
       <Tooltip>
         <TooltipTrigger asChild> 
-          {buttonElement}
+          {buttonElement} 
         </TooltipTrigger>
         <TooltipContent
           side="right"
           align="center"
-          hidden={state !== "collapsed" || isMobile}
-          {...tooltipProps}
+          hidden={sidebarState !== "collapsed" || isMobile}
+          {...tooltipContentProps}
         />
       </Tooltip>
     );
@@ -759,3 +761,4 @@ export {
   SidebarTrigger,
   useSidebar,
 }
+
