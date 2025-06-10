@@ -1,10 +1,13 @@
 
 "use client";
+import * as React from 'react';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import Link from "next/link";
 import { Package, Warehouse, ScanBarcode, FileText, ArrowRight } from "lucide-react";
 import Image from "next/image";
+import type { Equipment, Sector } from '@/lib/types';
+import { mockEquipment, mockSectors } from '@/lib/mock-data'; // Fallback data
 
 const quickAccessItems = [
   { title: "Cadastrar Equipamento", href: "/equipamentos", icon: Package, description: "Adicione novos itens ao inventário." },
@@ -13,7 +16,41 @@ const quickAccessItems = [
   { title: "Ver Relatórios", href: "/relatorios", icon: FileText, description: "Visualizar relatório completo." },
 ];
 
+const EQUIPMENTS_STORAGE_KEY = 'localStorage_equipments';
+const SECTORS_STORAGE_KEY = 'localStorage_sectors';
+
 export default function DashboardPage() {
+  const [totalEquipments, setTotalEquipments] = React.useState<number>(0);
+  const [totalSectors, setTotalSectors] = React.useState<number>(0);
+
+  React.useEffect(() => {
+    const storedEquipments = localStorage.getItem(EQUIPMENTS_STORAGE_KEY);
+    if (storedEquipments) {
+      try {
+        const equipments: Equipment[] = JSON.parse(storedEquipments);
+        setTotalEquipments(equipments.length);
+      } catch (e) {
+        console.error("Failed to parse equipments from localStorage", e);
+        setTotalEquipments(mockEquipment.length); // Fallback
+      }
+    } else {
+      setTotalEquipments(mockEquipment.length); // Fallback if nothing in localStorage
+    }
+
+    const storedSectors = localStorage.getItem(SECTORS_STORAGE_KEY);
+    if (storedSectors) {
+      try {
+        const sectors: Sector[] = JSON.parse(storedSectors);
+        setTotalSectors(sectors.length);
+      } catch (e) {
+        console.error("Failed to parse sectors from localStorage", e);
+        setTotalSectors(mockSectors.length); // Fallback
+      }
+    } else {
+      setTotalSectors(mockSectors.length); // Fallback if nothing in localStorage
+    }
+  }, []);
+
   return (
     <div className="space-y-8">
       <Card className="shadow-lg">
@@ -66,18 +103,19 @@ export default function DashboardPage() {
           <CardContent className="space-y-4">
             <div className="flex justify-between items-center p-3 bg-secondary/30 rounded-md">
               <span className="font-medium">Total de Equipamentos:</span>
-              <span className="text-xl font-bold text-primary">152</span> {/* Mock Data */}
+              <span className="text-xl font-bold text-primary">{totalEquipments}</span>
             </div>
             <div className="flex justify-between items-center p-3 bg-secondary/30 rounded-md">
               <span className="font-medium">Total de Setores:</span>
-              <span className="text-xl font-bold text-primary">12</span> {/* Mock Data */}
+              <span className="text-xl font-bold text-primary">{totalSectors}</span>
             </div>
              <div className="flex justify-between items-center p-3 bg-accent/10 rounded-md border border-accent">
               <span className="font-medium text-accent-foreground">Itens Conferidos Hoje:</span>
-              <span className="text-xl font-bold text-accent-foreground">25</span> {/* Mock Data */}
+              {/* TODO: Implement dynamic count for items checked today */}
+              <span className="text-xl font-bold text-accent-foreground">25</span> {/* Static Mock Data */}
             </div>
-             <Button className="w-full mt-4">
-              Ver Inventário Completo
+             <Button asChild className="w-full mt-4">
+              <Link href="/equipamentos">Ver Inventário Completo</Link>
             </Button>
           </CardContent>
         </Card>
@@ -87,6 +125,7 @@ export default function DashboardPage() {
             <CardDescription>Últimas movimentações e conferências.</CardDescription>
           </CardHeader>
           <CardContent>
+            {/* TODO: Implement dynamic recent activity feed */}
             <ul className="space-y-3">
               <li className="flex items-center justify-between text-sm">
                 <div><span className="font-medium">Notebook Dell XPS</span> adicionado ao setor <span className="text-primary">TI</span>.</div>
