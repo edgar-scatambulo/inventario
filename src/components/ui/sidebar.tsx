@@ -527,48 +527,42 @@ const sidebarMenuButtonVariants = cva(
 const SidebarMenuButton = React.forwardRef<
   HTMLButtonElement,
   React.ComponentProps<"button"> & {
-    asChild?: boolean; // For SidebarMenuButton's own slot behavior
+    asChild?: boolean; 
     isActive?: boolean;
     tooltip?: string | React.ComponentProps<typeof TooltipContent>;
   } & VariantProps<typeof sidebarMenuButtonVariants>
 >(
   (
     {
-      asChild: useSlotSemantics = false, // This is SidebarMenuButton's own asChild prop
+      asChild: useSlotSemantics = false, 
       isActive = false,
       variant = "default",
       size = "default",
       tooltip,
-      className, // This is the className passed to SidebarMenuButton
-      children,  // These are children passed to SidebarMenuButton (e.g., the span with icon and text)
-      // All other props from the parent (e.g., Link) are in restProps.
-      // This includes href, and potentially Link's own asChild prop.
+      className, 
+      children,  
       ...restProps 
     },
     ref
   ) => {
-    const Comp = useSlotSemantics ? Slot : "button"; // If SidebarMenuButton's asChild is true, Comp is Slot
+    const Comp = useSlotSemantics ? Slot : "button"; 
     const { isMobile, state } = useSidebar();
 
-    // From restProps (which are from the parent like Link),
-    // we separate out 'asChild' (if the parent passed one) from other props.
-    // 'asChildFromParent' will capture Link's asChild={true} if Link passes it.
-    // 'propsToPassToComp' will be all other props from Link (like href) BUT NOT Link's asChild.
+    // Explicitly destructure `asChild` from `restProps` to prevent it from being passed to `Comp`.
+    // `asChildFromParent` will capture the `asChild` prop if it was passed by a parent (e.g., Link).
+    // `propsToPassToComp` will contain all other props from `restProps`.
     const { asChild: asChildFromParent, ...propsToPassToComp } = restProps;
 
-    const buttonContent = children; // The icon and text span
+    const buttonContent = children;
 
-    // buttonElement is either <Slot {...propsToPassToComp}>{buttonContent}</Slot>
-    // or <button {...propsToPassToComp}>{buttonContent}</button>.
-    // Crucially, propsToPassToComp should NOT contain 'asChild'.
     const buttonElement = (
       <Comp
         ref={ref}
         data-sidebar="menu-button"
         data-size={size}
-        data-active={isActive} // This is SidebarMenuButton's own isActive
-        className={cn(sidebarMenuButtonVariants({ variant, size }), className)} // SidebarMenuButton's own className
-        {...propsToPassToComp} // These are from Link (e.g. href), with Link's asChild removed.
+        data-active={isActive} 
+        className={cn(sidebarMenuButtonVariants({ variant, size }), className)} 
+        {...propsToPassToComp} 
       >
         {buttonContent}
       </Comp>
