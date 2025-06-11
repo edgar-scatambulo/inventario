@@ -503,7 +503,7 @@ const SidebarMenuItem = React.forwardRef<
 SidebarMenuItem.displayName = "SidebarMenuItem"
 
 const sidebarMenuButtonVariants = cva(
-  "peer/menu-button flex w-full items-center gap-2 overflow-hidden rounded-md p-2 text-left text-sm outline-none ring-sidebar-ring transition-[width,height,padding] hover:bg-sidebar-accent hover:text-sidebar-accent-foreground focus-visible:ring-2 active:bg-sidebar-accent active:text-sidebar-accent-foreground disabled:pointer-events-none disabled:opacity-50 group-has-[[data-sidebar=menu-action]]/menu-item:pr-8 aria-disabled:pointer-events-none aria-disabled:opacity-50 data-[active=true]:bg-sidebar-accent data-[active=true]:font-medium data-[active=true]:text-sidebar-accent-foreground data-[state=open]:hover:bg-sidebar-accent data-[state=open]:hover:text-sidebar-accent-foreground group-data-[collapsible=icon]:!size-8 group-data-[collapsible=icon]:!p-2 [&>span:last-child]:truncate [&>svg]:size-4 [&>svg]:shrink-0",
+  "peer/menu-button flex w-full items-center gap-2 overflow-hidden rounded-md p-2 text-left text-sm outline-none ring-sidebar-ring transition-[width,height,padding] hover:bg-sidebar-accent hover:text-sidebar-accent-foreground focus-visible:ring-2 active:bg-sidebar-accent active:text-sidebar-accent-foreground disabled:pointer-events-none disabled:opacity-50 group-has-[[data-sidebar=menu-action]]/menu-item:pr-8 aria-disabled:pointer-events-none aria-disabled:opacity-50 data-[active=true]:bg-sidebar-primary data-[active=true]:font-medium data-[active=true]:text-sidebar-primary-foreground data-[state=open]:hover:bg-sidebar-accent data-[state=open]:hover:text-sidebar-accent-foreground group-data-[collapsible=icon]:!size-8 group-data-[collapsible=icon]:!p-2 [&>span:last-child]:truncate [&>svg]:size-4 [&>svg]:shrink-0",
   {
     variants: {
       variant: {
@@ -524,47 +524,48 @@ const sidebarMenuButtonVariants = cva(
   }
 )
 
+// Define a more specific type for the props that SidebarMenuButton itself defines
+// and then intersect with a generic for other props (like those from Link).
+type SidebarMenuButtonOwnProps = {
+  asChild?: boolean; // This is SidebarMenuButton's own asChild prop
+  isActive?: boolean;
+  tooltip?: string | React.ComponentProps<typeof TooltipContent>;
+} & VariantProps<typeof sidebarMenuButtonVariants>;
+
+
 const SidebarMenuButton = React.forwardRef<
-  HTMLButtonElement, // This should be flexible based on Comp, but button is a common case
-  React.ComponentProps<"button"> & { // Fallback to button props
-    asChild?: boolean;
-    isActive?: boolean;
-    tooltip?: string | React.ComponentProps<typeof TooltipContent>;
-  } & VariantProps<typeof sidebarMenuButtonVariants>
+  HTMLButtonElement, // More specific type for the common case (button)
+  SidebarMenuButtonOwnProps & Omit<React.ComponentPropsWithoutRef<'button'>, keyof SidebarMenuButtonOwnProps> & { [key: string]: any } // Allow other props like href
 >(
-  (
-    props,
-    ref
-  ) => {
-    // Destructure props passed TO SidebarMenuButton
-    const { 
-      asChild: useSlotSemantics = false, // This is SidebarMenuButton's OWN asChild prop
+  (allProps, ref) => {
+    const { isMobile, state: sidebarState } = useSidebar();
+
+    // 1. Destructure SidebarMenuButton's own defined props
+    const {
+      asChild: useSlotSemanticsForButton = false,
       isActive = false,
       variant = "default",
       size = "default",
       tooltip,
-      className,                  // className for SidebarMenuButton itself
-      children: buttonContentFromProps, // children for SidebarMenuButton (the span)
-      ...parentRestProps          // ALL OTHER props from parent (e.g. Link), this includes Link's href, onClick, AND Link's asChild
-    } = props;
+      className, // className specific to SidebarMenuButton styling
+      children: buttonContentFromProps, // Children for SidebarMenuButton (e.g., the <span> with icon and label)
+      ...remainingProps // These are all other props, potentially including href, onClick from Link, and Link's asChild
+    } = allProps;
 
-    const { isMobile, state: sidebarState } = useSidebar();
+    // 2. Critically, remove `asChild` from `remainingProps` if it exists (this would be from Link)
+    //    before spreading onto the underlying Comp.
+    const { asChild: _discardedAsChildFromParent, ...propsToPassToUnderlyingComp } = remainingProps;
 
-    // From the parent's rest props, remove 'asChild' if it exists.
-    // These are the props that will be passed to the underlying Slot/button.
-    // Using a generic name for the discarded asChild prop from parent.
-    const { asChild: _discardedAsChildFromParent, ...propsToPassToUnderlyingComp } = parentRestProps; 
-
-    const Comp = useSlotSemantics ? Slot : "button"; 
+    const Comp = useSlotSemanticsForButton ? Slot : "button";
 
     const buttonElement = (
       <Comp
         ref={ref}
         data-sidebar="menu-button"
         data-size={size}
-        data-active={isActive} 
+        data-active={isActive}
         className={cn(sidebarMenuButtonVariants({ variant, size, className }))}
-        {...propsToPassToUnderlyingComp} 
+        {...propsToPassToUnderlyingComp} // Spread the cleaned props (e.g., href, onClick, but NOT Link's asChild)
       >
         {buttonContentFromProps}
       </Comp>
@@ -578,8 +579,8 @@ const SidebarMenuButton = React.forwardRef<
 
     return (
       <Tooltip>
-        <TooltipTrigger asChild> 
-          {buttonElement} 
+        <TooltipTrigger asChild>
+          {buttonElement}
         </TooltipTrigger>
         <TooltipContent
           side="right"
@@ -762,3 +763,4 @@ export {
   useSidebar,
 }
 
+    
