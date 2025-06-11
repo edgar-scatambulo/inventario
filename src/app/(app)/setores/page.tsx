@@ -131,9 +131,13 @@ export default function SetoresPage() {
     setIsDialogOpen(true);
   };
 
-  const filteredSectors = sectors.filter(sector =>
-    sector.name.toLowerCase().includes(searchTerm.toLowerCase())
-  );
+  const filteredSectors = React.useMemo(() => {
+    return sectors
+      .filter(sector =>
+        sector.name.toLowerCase().includes(searchTerm.toLowerCase())
+      )
+      .sort((a, b) => a.name.localeCompare(b.name, undefined, { sensitivity: 'base' }));
+  }, [sectors, searchTerm]);
 
   return (
     <Card className="shadow-lg">
