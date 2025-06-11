@@ -524,36 +524,31 @@ const sidebarMenuButtonVariants = cva(
   }
 )
 
-// Define a more specific type for the props that SidebarMenuButton itself defines
-// and then intersect with a generic for other props (like those from Link).
 type SidebarMenuButtonOwnProps = {
-  asChild?: boolean; // This is SidebarMenuButton's own asChild prop
+  asChild?: boolean;
   isActive?: boolean;
   tooltip?: string | React.ComponentProps<typeof TooltipContent>;
 } & VariantProps<typeof sidebarMenuButtonVariants>;
 
 
 const SidebarMenuButton = React.forwardRef<
-  HTMLButtonElement, // More specific type for the common case (button)
-  SidebarMenuButtonOwnProps & Omit<React.ComponentPropsWithoutRef<'button'>, keyof SidebarMenuButtonOwnProps> & { [key: string]: any } // Allow other props like href
+  HTMLButtonElement,
+  SidebarMenuButtonOwnProps & Omit<React.ComponentPropsWithoutRef<'button'>, keyof SidebarMenuButtonOwnProps> & { [key: string]: any }
 >(
   (allProps, ref) => {
     const { isMobile, state: sidebarState } = useSidebar();
 
-    // 1. Destructure SidebarMenuButton's own defined props
     const {
       asChild: useSlotSemanticsForButton = false,
       isActive = false,
       variant = "default",
       size = "default",
       tooltip,
-      className, // className specific to SidebarMenuButton styling
-      children: buttonContentFromProps, // Children for SidebarMenuButton (e.g., the <span> with icon and label)
-      ...remainingProps // These are all other props, potentially including href, onClick from Link, and Link's asChild
+      className,
+      children: buttonContentFromProps,
+      ...remainingProps 
     } = allProps;
 
-    // 2. Critically, remove `asChild` from `remainingProps` if it exists (this would be from Link)
-    //    before spreading onto the underlying Comp.
     const { asChild: _discardedAsChildFromParent, ...propsToPassToUnderlyingComp } = remainingProps;
 
     const Comp = useSlotSemanticsForButton ? Slot : "button";
@@ -565,7 +560,7 @@ const SidebarMenuButton = React.forwardRef<
         data-size={size}
         data-active={isActive}
         className={cn(sidebarMenuButtonVariants({ variant, size, className }))}
-        {...propsToPassToUnderlyingComp} // Spread the cleaned props (e.g., href, onClick, but NOT Link's asChild)
+        {...propsToPassToUnderlyingComp} 
       >
         {buttonContentFromProps}
       </Comp>
@@ -762,5 +757,3 @@ export {
   SidebarTrigger,
   useSidebar,
 }
-
-    
