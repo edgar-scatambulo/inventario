@@ -176,9 +176,9 @@ export default function DashboardPage() {
             <div className="flex justify-between items-center p-3 bg-destructive/10 rounded-md border border-destructive/50">
               <div className="flex items-center">
                 <AlertTriangle className="mr-2 h-5 w-5 text-destructive/80" />
-                <span className="font-medium text-destructive-foreground/90">Não Conferidos:</span>
+                <span className="font-medium text-foreground">Não Conferidos:</span>
               </div>
-              <span className="text-xl font-bold text-destructive-foreground/90">{itemsNotCheckedCount}</span>
+              <span className="text-xl font-bold text-foreground">{itemsNotCheckedCount}</span>
             </div>
              <Button asChild className="w-full mt-4">
               <Link href="/equipamentos">Ver Inventário Completo</Link>
@@ -240,3 +240,4 @@ export default function DashboardPage() {
     </div>
   );
 }
+
