@@ -80,6 +80,7 @@ export default function RelatoriosPage() {
   };
 
   const filteredReportItems = reportData?.items.filter(item => 
+    (item.type && item.type.toLowerCase().includes(searchTerm.toLowerCase())) ||
     item.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
     item.barcode.includes(searchTerm) ||
     (item.model && item.model.toLowerCase().includes(searchTerm.toLowerCase())) ||
@@ -176,7 +177,8 @@ export default function RelatoriosPage() {
                 <Table>
                   <TableHeader>
                     <TableRow>
-                      <TableHead>Nome</TableHead>
+                      <TableHead>Tipo</TableHead>
+                      <TableHead>Marca</TableHead>
                       <TableHead className="hidden sm:table-cell">Modelo</TableHead>
                       <TableHead className="hidden md:table-cell">Nº de Série</TableHead>
                       <TableHead>Cód. Barras</TableHead>
@@ -188,6 +190,7 @@ export default function RelatoriosPage() {
                   <TableBody>
                     {filteredReportItems.map(item => (
                       <TableRow key={item.id}>
+                        <TableCell>{item.type || 'N/A'}</TableCell>
                         <TableCell className="font-medium">{item.name}</TableCell>
                         <TableCell className="hidden sm:table-cell max-w-[150px] truncate">{item.model || 'N/A'}</TableCell>
                         <TableCell className="hidden md:table-cell max-w-[150px] truncate">{item.serialNumber || 'N/A'}</TableCell>

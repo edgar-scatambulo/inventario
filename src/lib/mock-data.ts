@@ -11,7 +11,8 @@ export const mockSectors: Sector[] = [
 export const mockEquipment: Equipment[] = [
   {
     id: 'equip-1',
-    name: 'Notebook Dell Latitude 7420',
+    name: 'Dell Latitude 7420', // Changed from 'Notebook Dell Latitude 7420' to just brand/name
+    type: 'Notebook',
     model: 'Latitude 7420',
     serialNumber: 'SN7420XYZ001',
     description: 'Processador i7, 16GB RAM, 512GB SSD',
@@ -21,7 +22,8 @@ export const mockEquipment: Equipment[] = [
   },
   {
     id: 'equip-2',
-    name: 'Monitor LG UltraWide 34"',
+    name: 'LG UltraWide 34"', // Changed from 'Monitor LG UltraWide 34"'
+    type: 'Monitor',
     model: '34WN750-B',
     serialNumber: 'SNLG34MON002',
     description: 'Resolução 3440x1440, Curvo',
@@ -32,6 +34,7 @@ export const mockEquipment: Equipment[] = [
   {
     id: 'equip-3',
     name: 'Apple MacBook Pro 16"',
+    type: 'Notebook',
     model: 'MacBookPro18,1',
     serialNumber: 'SNMBP16M2P003',
     description: 'Chip M2 Pro, 32GB RAM, 1TB SSD',
@@ -41,7 +44,8 @@ export const mockEquipment: Equipment[] = [
   },
   {
     id: 'equip-4',
-    name: 'Impressora HP LaserJet Pro',
+    name: 'HP LaserJet Pro', // Changed from 'Impressora HP LaserJet Pro'
+    type: 'Impressora',
     model: 'M428fdw',
     serialNumber: 'SNHPLJM428004',
     description: 'Multifuncional, Wi-Fi',
@@ -51,7 +55,8 @@ export const mockEquipment: Equipment[] = [
   },
   {
     id: 'equip-5',
-    name: 'Projetor Epson PowerLite',
+    name: 'Epson PowerLite', // Changed from 'Projetor Epson PowerLite' -> assuming this is a type of projector
+    type: 'Gabinete', // Example, could be projector if that's a type
     model: '1781W',
     serialNumber: 'SNEPSPL1781005',
     description: '3LCD, Full HD',
@@ -61,7 +66,8 @@ export const mockEquipment: Equipment[] = [
   },
   {
     id: 'equip-6',
-    name: 'Cadeira Ergonômica Herman Miller',
+    name: 'Herman Miller', // Changed from 'Cadeira Ergonômica Herman Miller'
+    type: 'Gabinete', // Example, could be 'Mobiliário' or similar
     model: 'Aeron Remastered',
     serialNumber: 'SNHMAERON006',
     description: 'Modelo Aeron, Tamanho B',

@@ -46,7 +46,10 @@ import { mockEquipment, mockSectors } from '@/lib/mock-data';
 import { useToast } from '@/hooks/use-toast';
 import { cn } from '@/lib/utils';
 
+const equipmentTypes = ['Gabinete', 'Impressora', 'Notebook', 'Monitor', 'Switch'];
+
 const equipmentFormSchema = z.object({
+  type: z.string().min(1, { message: 'Selecione um tipo.' }),
   name: z.string().min(3, { message: 'Marca deve ter pelo menos 3 caracteres.' }),
   model: z.string().optional(),
   serialNumber: z.string().optional(),
@@ -73,6 +76,7 @@ export default function EquipamentosPage() {
   const form = useForm<EquipmentFormValues>({
     resolver: zodResolver(equipmentFormSchema),
     defaultValues: {
+      type: '',
       name: '',
       model: '',
       serialNumber: '',
@@ -103,6 +107,7 @@ export default function EquipamentosPage() {
   React.useEffect(() => {
     if (editingEquipment) {
       form.reset({
+        type: editingEquipment.type || '',
         name: editingEquipment.name,
         model: editingEquipment.model || '',
         serialNumber: editingEquipment.serialNumber || '',
@@ -111,7 +116,7 @@ export default function EquipamentosPage() {
         sectorId: editingEquipment.sectorId || NO_SECTOR_VALUE, 
       });
     } else {
-      form.reset({ name: '', model: '', serialNumber: '', description: '', barcode: '', sectorId: NO_SECTOR_VALUE });
+      form.reset({ type: '', name: '', model: '', serialNumber: '', description: '', barcode: '', sectorId: NO_SECTOR_VALUE });
     }
   }, [editingEquipment, form, isDialogOpen]);
 
@@ -127,6 +132,7 @@ export default function EquipamentosPage() {
       updatedEquipments = equipments.map(eq =>
         eq.id === editingEquipment.id 
         ? { ...editingEquipment, 
+            type: data.type,
             name: data.name,
             model: data.model,
             serialNumber: data.serialNumber,
@@ -141,6 +147,7 @@ export default function EquipamentosPage() {
     } else {
       const newEquipment: Equipment = {
         id: `equip-${Date.now()}`,
+        type: data.type,
         name: data.name,
         model: data.model,
         serialNumber: data.serialNumber,
@@ -171,7 +178,8 @@ export default function EquipamentosPage() {
   };
   
   const filteredEquipments = equipments.filter(eq => {
-    const matchesSearch = eq.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
+    const matchesSearch = (eq.type && eq.type.toLowerCase().includes(searchTerm.toLowerCase())) ||
+                          eq.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
                           eq.barcode.includes(searchTerm) ||
                           (eq.model && eq.model.toLowerCase().includes(searchTerm.toLowerCase())) ||
                           (eq.serialNumber && eq.serialNumber.toLowerCase().includes(searchTerm.toLowerCase())) ||
@@ -210,12 +218,40 @@ export default function EquipamentosPage() {
                 <form onSubmit={form.handleSubmit(handleAddOrUpdateEquipment)} className="space-y-4 py-4">
                   <FormField
                     control={form.control}
+                    name="type"
+                    render={({ field }) => (
+                      <FormItem>
+                        <FormLabel>Tipo</FormLabel>
+                        <Select 
+                          onValueChange={field.onChange} 
+                          value={field.value}
+                          defaultValue={field.value}
+                        >
+                          <FormControl>
+                            <SelectTrigger>
+                              <SelectValue placeholder="Selecione um tipo" />
+                            </SelectTrigger>
+                          </FormControl>
+                          <SelectContent>
+                            {equipmentTypes.map(type => (
+                              <SelectItem key={type} value={type}>
+                                {type}
+                              </SelectItem>
+                            ))}
+                          </SelectContent>
+                        </Select>
+                        <FormMessage />
+                      </FormItem>
+                    )}
+                  />
+                  <FormField
+                    control={form.control}
                     name="name"
                     render={({ field }) => (
                       <FormItem>
                         <FormLabel>Marca</FormLabel>
                         <FormControl>
-                          <Input placeholder="Ex: Notebook Dell XPS 15" {...field} />
+                          <Input placeholder="Ex: Dell, HP, Apple" {...field} />
                         </FormControl>
                         <FormMessage />
                       </FormItem>
@@ -228,7 +264,7 @@ export default function EquipamentosPage() {
                       <FormItem>
                         <FormLabel>Modelo</FormLabel>
                         <FormControl>
-                          <Input placeholder="Ex: XPS 15 9520" {...field} value={field.value ?? ''} />
+                          <Input placeholder="Ex: XPS 15 9520, LaserJet M428fdw" {...field} value={field.value ?? ''} />
                         </FormControl>
                         <FormMessage />
                       </FormItem>
@@ -254,7 +290,7 @@ export default function EquipamentosPage() {
                       <FormItem>
                         <FormLabel>Descrição</FormLabel>
                         <FormControl>
-                          <Textarea placeholder="Ex: i7, 16GB RAM, 512GB SSD, Placa de vídeo RTX 3050" {...field} value={field.value ?? ''} />
+                          <Textarea placeholder="Ex: i7, 16GB RAM, 512GB SSD, Cor Prata" {...field} value={field.value ?? ''} />
                         </FormControl>
                         <FormMessage />
                       </FormItem>
@@ -317,7 +353,7 @@ export default function EquipamentosPage() {
             <Search className="absolute left-2.5 top-2.5 h-4 w-4 text-muted-foreground" />
             <Input
               type="search"
-              placeholder="Buscar por marca, modelo, serial, código..."
+              placeholder="Buscar por tipo, marca, modelo, serial..."
               className="pl-8 w-full"
               value={searchTerm}
               onChange={(e) => setSearchTerm(e.target.value)}
@@ -345,6 +381,7 @@ export default function EquipamentosPage() {
           <Table>
             <TableHeader>
               <TableRow>
+                <TableHead>Tipo</TableHead>
                 <TableHead>Marca</TableHead>
                 <TableHead className="hidden sm:table-cell">Modelo</TableHead>
                 <TableHead className="hidden md:table-cell">Nº de Série</TableHead>
@@ -362,6 +399,7 @@ export default function EquipamentosPage() {
                     !equipment.lastCheckedTimestamp && 'bg-destructive/10 hover:bg-destructive/15 dark:bg-destructive/20 dark:hover:bg-destructive/25'
                   )}
                 >
+                  <TableCell>{equipment.type || 'N/A'}</TableCell>
                   <TableCell className="font-medium">{equipment.name}</TableCell>
                   <TableCell className="hidden sm:table-cell max-w-[150px] truncate">{equipment.model || 'N/A'}</TableCell>
                   <TableCell className="hidden md:table-cell max-w-[150px] truncate">{equipment.serialNumber || 'N/A'}</TableCell>
@@ -397,7 +435,7 @@ export default function EquipamentosPage() {
                 </TableRow>
               )) : (
                 <TableRow>
-                  <TableCell colSpan={7} className="text-center h-24">
+                  <TableCell colSpan={8} className="text-center h-24">
                     Nenhum equipamento encontrado.
                   </TableCell>
                 </TableRow>

@@ -60,7 +60,7 @@ export default function ConferenciaPage() {
       setCheckedEquipment({ ...foundEquipment, lastCheckedTimestamp: now });
       toast({
         title: 'Equipamento Conferido!',
-        description: `${foundEquipment.name} localizado no setor ${foundEquipment.sectorName || 'N/A'}. Conferência registrada.`,
+        description: `${foundEquipment.type || ''} ${foundEquipment.name} localizado no setor ${foundEquipment.sectorName || 'N/A'}. Conferência registrada.`,
         className: 'bg-green-100 border-green-500 text-green-700 dark:bg-green-900 dark:text-green-200 dark:border-green-700',
       });
     } else {
@@ -144,11 +144,12 @@ export default function ConferenciaPage() {
                     <CheckCircle2 className="h-12 w-12 mb-3" />
                     <h3 className="text-xl font-semibold">Equipamento Encontrado e Conferido!</h3>
                   </div>
-                  <div><strong>Nome:</strong> {checkedEquipment.name}</div>
+                  <div><strong>Tipo:</strong> {checkedEquipment.type || 'N/A'}</div>
+                  <div><strong>Marca:</strong> {checkedEquipment.name}</div>
                   <div><strong>Modelo:</strong> {checkedEquipment.model || 'N/A'}</div>
                   <div><strong>Nº de Série:</strong> {checkedEquipment.serialNumber || 'N/A'}</div>
                   <div><strong>Descrição:</strong> {checkedEquipment.description || 'N/A'}</div>
-                  <div><strong>Código de Barras:</strong> {checkedEquipment.barcode}</div>
+                  <div><strong>Patrimônio / Código de Barras:</strong> {checkedEquipment.barcode}</div>
                   <div><strong>Setor:</strong> {checkedEquipment.sectorName || 'Não atribuído'}</div>
                   {checkedEquipment.lastCheckedTimestamp && (
                      <div><strong>Última Conferência:</strong> {new Date(checkedEquipment.lastCheckedTimestamp).toLocaleString()}</div>

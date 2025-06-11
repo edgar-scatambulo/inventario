@@ -1,9 +1,10 @@
 
 export interface Equipment {
   id: string;
-  name: string;
-  model?: string; // Novo campo
-  serialNumber?: string; // Novo campo
+  name: string; // This is 'Marca' in the UI
+  type?: string; // Novo campo 'Tipo'
+  model?: string;
+  serialNumber?: string;
   description?: string;
   barcode: string;
   sectorId?: string;
