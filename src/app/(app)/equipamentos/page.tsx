@@ -226,7 +226,7 @@ export default function EquipamentosPage() {
                     name="model"
                     render={({ field }) => (
                       <FormItem>
-                        <FormLabel>Modelo (Opcional)</FormLabel>
+                        <FormLabel>Modelo</FormLabel>
                         <FormControl>
                           <Input placeholder="Ex: XPS 15 9520" {...field} value={field.value ?? ''} />
                         </FormControl>
@@ -239,7 +239,7 @@ export default function EquipamentosPage() {
                     name="serialNumber"
                     render={({ field }) => (
                       <FormItem>
-                        <FormLabel>Número de Série (Opcional)</FormLabel>
+                        <FormLabel>Número de Série</FormLabel>
                         <FormControl>
                           <Input placeholder="Ex: ABC123XYZ" {...field} value={field.value ?? ''} />
                         </FormControl>
@@ -409,5 +409,3 @@ export default function EquipamentosPage() {
     </Card>
   );
 }
-
-    
