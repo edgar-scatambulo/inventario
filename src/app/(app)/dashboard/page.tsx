@@ -4,7 +4,7 @@ import * as React from 'react';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import Link from "next/link";
-import { Package, Warehouse, ScanBarcode, FileText, ArrowRight, PieChart as PieChartIcon } from "lucide-react";
+import { Package, Warehouse, ScanBarcode, FileText, ArrowRight, PieChart as PieChartIcon, AlertTriangle } from "lucide-react";
 import Image from "next/image";
 import type { Equipment, Sector } from '@/lib/types';
 import { mockEquipment, mockSectors } from '@/lib/mock-data'; 
@@ -55,6 +55,7 @@ export default function DashboardPage() {
   const [totalEquipments, setTotalEquipments] = React.useState<number>(0);
   const [totalSectors, setTotalSectors] = React.useState<number>(0);
   const [itemsCheckedTodayCount, setItemsCheckedTodayCount] = React.useState<number>(0);
+  const [itemsNotCheckedCount, setItemsNotCheckedCount] = React.useState<number>(0);
   const [conferenceChartData, setConferenceChartData] = React.useState<Array<{ category: keyof typeof conferenceChartConfig; value: number; fill: string }>>([]);
 
   React.useEffect(() => {
@@ -76,20 +77,24 @@ export default function DashboardPage() {
 
     let checkedToday = 0;
     let totalConferenced = 0;
+    let totalNotConferencedInEffect = 0;
+
     equipments.forEach(eq => {
       if (eq.lastCheckedTimestamp) {
         totalConferenced++;
         if (isTimestampToday(eq.lastCheckedTimestamp)) {
           checkedToday++;
         }
+      } else {
+        totalNotConferencedInEffect++;
       }
     });
     setItemsCheckedTodayCount(checkedToday);
-    const totalNotConferenced = equipments.length - totalConferenced;
+    setItemsNotCheckedCount(totalNotConferencedInEffect);
     
     setConferenceChartData([
       { category: "conferidos", value: totalConferenced, fill: conferenceChartConfig.conferidos.color },
-      { category: "naoConferidos", value: totalNotConferenced, fill: conferenceChartConfig.naoConferidos.color },
+      { category: "naoConferidos", value: totalNotConferencedInEffect, fill: conferenceChartConfig.naoConferidos.color },
     ]);
 
     const storedSectors = localStorage.getItem(SECTORS_STORAGE_KEY);
@@ -167,6 +172,13 @@ export default function DashboardPage() {
              <div className="flex justify-between items-center p-3 bg-accent/10 rounded-md border border-accent">
               <span className="font-medium text-accent-foreground">Itens Conferidos Hoje:</span>
               <span className="text-xl font-bold text-accent-foreground">{itemsCheckedTodayCount}</span>
+            </div>
+            <div className="flex justify-between items-center p-3 bg-destructive/10 rounded-md border border-destructive/50">
+              <div className="flex items-center">
+                <AlertTriangle className="mr-2 h-5 w-5 text-destructive/80" />
+                <span className="font-medium text-destructive-foreground/90">Não Conferidos:</span>
+              </div>
+              <span className="text-xl font-bold text-destructive-foreground/90">{itemsNotCheckedCount}</span>
             </div>
              <Button asChild className="w-full mt-4">
               <Link href="/equipamentos">Ver Inventário Completo</Link>
