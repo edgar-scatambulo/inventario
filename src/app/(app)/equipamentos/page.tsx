@@ -47,11 +47,11 @@ import { useToast } from '@/hooks/use-toast';
 import { cn } from '@/lib/utils';
 
 const equipmentFormSchema = z.object({
-  name: z.string().min(3, { message: 'Nome deve ter pelo menos 3 caracteres.' }),
+  name: z.string().min(3, { message: 'Marca deve ter pelo menos 3 caracteres.' }),
   model: z.string().optional(),
   serialNumber: z.string().optional(),
   description: z.string().optional(),
-  barcode: z.string().min(5, { message: 'Código de barras deve ter pelo menos 5 caracteres.' }),
+  barcode: z.string().min(5, { message: 'Patrimônio / Código de barras deve ter pelo menos 5 caracteres.' }),
   sectorId: z.string().optional(),
 });
 
@@ -108,10 +108,10 @@ export default function EquipamentosPage() {
         serialNumber: editingEquipment.serialNumber || '',
         description: editingEquipment.description || '',
         barcode: editingEquipment.barcode,
-        sectorId: editingEquipment.sectorId || '', 
+        sectorId: editingEquipment.sectorId || NO_SECTOR_VALUE, 
       });
     } else {
-      form.reset({ name: '', model: '', serialNumber: '', description: '', barcode: '', sectorId: '' });
+      form.reset({ name: '', model: '', serialNumber: '', description: '', barcode: '', sectorId: NO_SECTOR_VALUE });
     }
   }, [editingEquipment, form, isDialogOpen]);
 
@@ -213,7 +213,7 @@ export default function EquipamentosPage() {
                     name="name"
                     render={({ field }) => (
                       <FormItem>
-                        <FormLabel>Nome do Equipamento</FormLabel>
+                        <FormLabel>Marca</FormLabel>
                         <FormControl>
                           <Input placeholder="Ex: Notebook Dell XPS 15" {...field} />
                         </FormControl>
@@ -252,7 +252,7 @@ export default function EquipamentosPage() {
                     name="description"
                     render={({ field }) => (
                       <FormItem>
-                        <FormLabel>Descrição (Opcional)</FormLabel>
+                        <FormLabel>Descrição</FormLabel>
                         <FormControl>
                           <Textarea placeholder="Ex: i7, 16GB RAM, 512GB SSD, Placa de vídeo RTX 3050" {...field} value={field.value ?? ''} />
                         </FormControl>
@@ -265,7 +265,7 @@ export default function EquipamentosPage() {
                     name="barcode"
                     render={({ field }) => (
                       <FormItem>
-                        <FormLabel>Código de Barras</FormLabel>
+                        <FormLabel>Patrimônio / Código de Barras</FormLabel>
                         <FormControl>
                           <Input placeholder="Ex: 1234567890123" {...field} />
                         </FormControl>
@@ -278,10 +278,10 @@ export default function EquipamentosPage() {
                     name="sectorId"
                     render={({ field }) => (
                       <FormItem>
-                        <FormLabel>Setor (Opcional)</FormLabel>
+                        <FormLabel>Setor</FormLabel>
                         <Select 
                           onValueChange={field.onChange} 
-                          value={field.value || ''}
+                          value={field.value || NO_SECTOR_VALUE}
                         >
                           <FormControl>
                             <SelectTrigger>
@@ -317,7 +317,7 @@ export default function EquipamentosPage() {
             <Search className="absolute left-2.5 top-2.5 h-4 w-4 text-muted-foreground" />
             <Input
               type="search"
-              placeholder="Buscar por nome, modelo, serial, código..."
+              placeholder="Buscar por marca, modelo, serial, código..."
               className="pl-8 w-full"
               value={searchTerm}
               onChange={(e) => setSearchTerm(e.target.value)}
@@ -345,10 +345,10 @@ export default function EquipamentosPage() {
           <Table>
             <TableHeader>
               <TableRow>
-                <TableHead>Nome</TableHead>
+                <TableHead>Marca</TableHead>
                 <TableHead className="hidden sm:table-cell">Modelo</TableHead>
                 <TableHead className="hidden md:table-cell">Nº de Série</TableHead>
-                <TableHead>Código de Barras</TableHead>
+                <TableHead>Patrimônio / Código de Barras</TableHead>
                 <TableHead>Setor</TableHead>
                 <TableHead className="hidden lg:table-cell">Descrição</TableHead>
                 <TableHead className="text-right">Ações</TableHead>
@@ -409,3 +409,5 @@ export default function EquipamentosPage() {
     </Card>
   );
 }
+
+    
