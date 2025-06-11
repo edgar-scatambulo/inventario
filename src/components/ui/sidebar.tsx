@@ -71,7 +71,15 @@ const SidebarProvider = React.forwardRef<
     const isMobile = useIsMobile()
     const [openMobile, setOpenMobile] = React.useState(false)
 
-    const [_open, _setOpen] = React.useState(defaultOpen)
+    const [_open, _setOpen] = React.useState(() => {
+      if (typeof document === 'undefined') return defaultOpen;
+      const cookieValue = document.cookie
+        .split("; ")
+        .find((row) => row.startsWith(`${SIDEBAR_COOKIE_NAME}=`))
+        ?.split("=")[1]
+      return cookieValue ? cookieValue === "true" : defaultOpen
+    })
+    
     const open = openProp ?? _open
     const setOpen = React.useCallback(
       (value: boolean | ((value: boolean) => boolean)) => {
@@ -81,8 +89,9 @@ const SidebarProvider = React.forwardRef<
         } else {
           _setOpen(openState)
         }
-
-        document.cookie = `${SIDEBAR_COOKIE_NAME}=${openState}; path=/; max-age=${SIDEBAR_COOKIE_MAX_AGE}`
+        if (typeof document !== 'undefined') {
+          document.cookie = `${SIDEBAR_COOKIE_NAME}=${openState}; path=/; max-age=${SIDEBAR_COOKIE_MAX_AGE}`
+        }
       },
       [setOpenProp, open]
     )
@@ -108,7 +117,7 @@ const SidebarProvider = React.forwardRef<
       return () => window.removeEventListener("keydown", handleKeyDown)
     }, [toggleSidebar])
 
-    const sidebarState = open ? "expanded" : "collapsed" // Renamed to avoid conflict
+    const sidebarState = open ? "expanded" : "collapsed" 
 
     const contextValue = React.useMemo<SidebarContext>(
       () => ({
@@ -538,20 +547,30 @@ const SidebarMenuButton = React.forwardRef<
   (allProps, ref) => {
     const { isMobile, state: sidebarState } = useSidebar();
 
+    // Destructure SBM's specific behavioral props and its own `asChild` intention
+    // `ownAsChildIntent` will be true if `asChild` is explicitly on <SidebarMenuButton> OR if it's passed from a parent like <Link asChild>
     const {
-      asChild: useSlotSemanticsForButton = false,
+      asChild: ownAsChildIntent = false, 
       isActive = false,
       variant = "default",
       size = "default",
       tooltip,
       className,
       children: buttonContentFromProps,
+      // `remainingProps` will capture `href` from Link, and potentially an `asChild` from Link if Link itself has `asChild`
+      // It's crucial that `asChild` used for `ownAsChildIntent` is correctly separated here.
       ...remainingProps 
     } = allProps;
 
-    const { asChild: _discardedAsChildFromParent, ...propsToPassToUnderlyingComp } = remainingProps;
+    // Filter out `asChild` from `remainingProps` so it's not spread onto the underlying element if it came from parent
+    // This ensures that if `asChild` was already consumed for `ownAsChildIntent`, any duplicate `asChild` (e.g. from Link) is removed
+    const { asChild: _parentAsChild, ...parentPropsToForward } = remainingProps;
 
-    const Comp = useSlotSemanticsForButton ? Slot : "button";
+    // Determine the actual component to render
+    // If a tooltip is active, TooltipTrigger uses `asChild`, so SBM must render a concrete element ('button').
+    // Otherwise, SBM respects its `ownAsChildIntent`.
+    const renderAsSlot = tooltip ? false : ownAsChildIntent;
+    const Comp = renderAsSlot ? Slot : "button";
 
     const buttonElement = (
       <Comp
@@ -560,21 +579,24 @@ const SidebarMenuButton = React.forwardRef<
         data-size={size}
         data-active={isActive}
         className={cn(sidebarMenuButtonVariants({ variant, size, className }))}
-        {...propsToPassToUnderlyingComp} 
+        {...parentPropsToForward} // Spread cleaned props from parent (e.g., href)
       >
         {buttonContentFromProps}
       </Comp>
     );
 
     if (!tooltip) {
-      return buttonElement;
+      return buttonElement; // Render directly if no tooltip
     }
 
+    // If tooltip is present, wrap with Tooltip and TooltipTrigger
     const tooltipContentProps = typeof tooltip === "string" ? { children: tooltip } : tooltip;
-
     return (
       <Tooltip>
-        <TooltipTrigger asChild>
+        <TooltipTrigger asChild> 
+          {/* TooltipTrigger's `asChild` will correctly wrap `buttonElement`.
+              Since `buttonElement` is now guaranteed to be a <button> (not <Slot>)
+              when `tooltip` is true, there's no Slot-within-Slot issue here. */}
           {buttonElement}
         </TooltipTrigger>
         <TooltipContent
@@ -757,3 +779,5 @@ export {
   SidebarTrigger,
   useSidebar,
 }
+
+    
