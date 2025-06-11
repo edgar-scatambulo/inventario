@@ -149,7 +149,7 @@ export default function ConferenciaPage() {
                   <div><strong>Modelo:</strong> {checkedEquipment.model || 'N/A'}</div>
                   <div><strong>Nº de Série:</strong> {checkedEquipment.serialNumber || 'N/A'}</div>
                   <div><strong>Descrição:</strong> {checkedEquipment.description || 'N/A'}</div>
-                  <div><strong>Patrimônio / Código de Barras:</strong> {checkedEquipment.barcode}</div>
+                  <div><strong>Patrimônio:</strong> {checkedEquipment.barcode}</div>
                   <div><strong>Setor:</strong> {checkedEquipment.sectorName || 'Não atribuído'}</div>
                   {checkedEquipment.lastCheckedTimestamp && (
                      <div><strong>Última Conferência:</strong> {new Date(checkedEquipment.lastCheckedTimestamp).toLocaleString()}</div>

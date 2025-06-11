@@ -54,7 +54,7 @@ const equipmentFormSchema = z.object({
   model: z.string().optional(),
   serialNumber: z.string().optional(),
   description: z.string().optional(),
-  barcode: z.string().min(5, { message: 'Patrimônio / Código de barras deve ter pelo menos 5 caracteres.' }),
+  barcode: z.string().min(5, { message: 'Patrimônio deve ter pelo menos 5 caracteres.' }),
   sectorId: z.string().optional(),
 });
 
@@ -301,7 +301,7 @@ export default function EquipamentosPage() {
                     name="barcode"
                     render={({ field }) => (
                       <FormItem>
-                        <FormLabel>Patrimônio / Código de Barras</FormLabel>
+                        <FormLabel>Patrimônio</FormLabel>
                         <FormControl>
                           <Input placeholder="Ex: 1234567890123" {...field} />
                         </FormControl>
@@ -385,7 +385,7 @@ export default function EquipamentosPage() {
                 <TableHead>Marca</TableHead>
                 <TableHead className="hidden sm:table-cell">Modelo</TableHead>
                 <TableHead className="hidden md:table-cell">Nº de Série</TableHead>
-                <TableHead>Patrimônio / Código de Barras</TableHead>
+                <TableHead>Patrimônio</TableHead>
                 <TableHead>Setor</TableHead>
                 <TableHead className="hidden lg:table-cell">Descrição</TableHead>
                 <TableHead className="text-right">Ações</TableHead>
