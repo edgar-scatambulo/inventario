@@ -40,6 +40,7 @@ import { zodResolver } from '@hookform/resolvers/zod';
 import { useForm } from 'react-hook-form';
 import * as z from 'zod';
 import { Form, FormControl, FormField, FormItem, FormLabel, FormMessage } from '@/components/ui/form';
+import { Label } from '@/components/ui/label';
 import { Textarea } from '@/components/ui/textarea';
 import type { Equipment, Sector } from '@/lib/types';
 import { mockEquipment, mockSectors } from '@/lib/mock-data';
@@ -213,10 +214,14 @@ export default function EquipamentosPage() {
 
     const updatedEquipments = equipments.map(eq => {
       if (sectorToMarkUnchecked === ALL_SECTORS_VALUE) {
-        return { ...eq, lastCheckedTimestamp: undefined };
+        // eslint-disable-next-line @typescript-eslint/no-unused-vars
+        const { lastCheckedTimestamp, ...rest } = eq;
+        return rest;
       }
       if (eq.sectorId === sectorToMarkUnchecked) {
-        return { ...eq, lastCheckedTimestamp: undefined };
+        // eslint-disable-next-line @typescript-eslint/no-unused-vars
+        const { lastCheckedTimestamp, ...rest } = eq;
+        return rest;
       }
       return eq;
     });
@@ -533,5 +538,7 @@ export default function EquipamentosPage() {
   );
 }
 
+
+    
 
     
