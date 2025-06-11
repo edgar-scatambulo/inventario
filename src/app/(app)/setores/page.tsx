@@ -44,7 +44,7 @@ import { mockSectors } from '@/lib/mock-data';
 import { useToast } from '@/hooks/use-toast';
 
 const sectorFormSchema = z.object({
-  name: z.string().min(3, { message: 'Nome do setor deve ter pelo menos 3 caracteres.' }),
+  name: z.string().min(2, { message: 'Nome do setor deve ter pelo menos 2 caracteres.' }),
 });
 
 type SectorFormValues = z.infer<typeof sectorFormSchema>;
