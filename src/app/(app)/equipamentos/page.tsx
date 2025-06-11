@@ -48,6 +48,8 @@ import { cn } from '@/lib/utils';
 
 const equipmentFormSchema = z.object({
   name: z.string().min(3, { message: 'Nome deve ter pelo menos 3 caracteres.' }),
+  model: z.string().optional(),
+  serialNumber: z.string().optional(),
   description: z.string().optional(),
   barcode: z.string().min(5, { message: 'Código de barras deve ter pelo menos 5 caracteres.' }),
   sectorId: z.string().optional(),
@@ -72,6 +74,8 @@ export default function EquipamentosPage() {
     resolver: zodResolver(equipmentFormSchema),
     defaultValues: {
       name: '',
+      model: '',
+      serialNumber: '',
       description: '',
       barcode: '',
       sectorId: '',
@@ -100,12 +104,14 @@ export default function EquipamentosPage() {
     if (editingEquipment) {
       form.reset({
         name: editingEquipment.name,
+        model: editingEquipment.model || '',
+        serialNumber: editingEquipment.serialNumber || '',
         description: editingEquipment.description || '',
         barcode: editingEquipment.barcode,
         sectorId: editingEquipment.sectorId || '', 
       });
     } else {
-      form.reset({ name: '', description: '', barcode: '', sectorId: '' });
+      form.reset({ name: '', model: '', serialNumber: '', description: '', barcode: '', sectorId: '' });
     }
   }, [editingEquipment, form, isDialogOpen]);
 
@@ -121,7 +127,9 @@ export default function EquipamentosPage() {
       updatedEquipments = equipments.map(eq =>
         eq.id === editingEquipment.id 
         ? { ...editingEquipment, 
-            name: data.name, 
+            name: data.name,
+            model: data.model,
+            serialNumber: data.serialNumber,
             description: data.description, 
             barcode: data.barcode, 
             sectorId: finalSectorId, 
@@ -134,6 +142,8 @@ export default function EquipamentosPage() {
       const newEquipment: Equipment = {
         id: `equip-${Date.now()}`,
         name: data.name,
+        model: data.model,
+        serialNumber: data.serialNumber,
         description: data.description,
         barcode: data.barcode,
         sectorId: finalSectorId,
@@ -163,6 +173,8 @@ export default function EquipamentosPage() {
   const filteredEquipments = equipments.filter(eq => {
     const matchesSearch = eq.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
                           eq.barcode.includes(searchTerm) ||
+                          (eq.model && eq.model.toLowerCase().includes(searchTerm.toLowerCase())) ||
+                          (eq.serialNumber && eq.serialNumber.toLowerCase().includes(searchTerm.toLowerCase())) ||
                           (eq.description && eq.description.toLowerCase().includes(searchTerm.toLowerCase()));
     const matchesSector = (filterSector && filterSector !== 'all') ? eq.sectorId === filterSector : true;
     return matchesSearch && matchesSector;
@@ -204,6 +216,32 @@ export default function EquipamentosPage() {
                         <FormLabel>Nome do Equipamento</FormLabel>
                         <FormControl>
                           <Input placeholder="Ex: Notebook Dell XPS 15" {...field} />
+                        </FormControl>
+                        <FormMessage />
+                      </FormItem>
+                    )}
+                  />
+                  <FormField
+                    control={form.control}
+                    name="model"
+                    render={({ field }) => (
+                      <FormItem>
+                        <FormLabel>Modelo (Opcional)</FormLabel>
+                        <FormControl>
+                          <Input placeholder="Ex: XPS 15 9520" {...field} value={field.value ?? ''} />
+                        </FormControl>
+                        <FormMessage />
+                      </FormItem>
+                    )}
+                  />
+                  <FormField
+                    control={form.control}
+                    name="serialNumber"
+                    render={({ field }) => (
+                      <FormItem>
+                        <FormLabel>Número de Série (Opcional)</FormLabel>
+                        <FormControl>
+                          <Input placeholder="Ex: ABC123XYZ" {...field} value={field.value ?? ''} />
                         </FormControl>
                         <FormMessage />
                       </FormItem>
@@ -279,7 +317,7 @@ export default function EquipamentosPage() {
             <Search className="absolute left-2.5 top-2.5 h-4 w-4 text-muted-foreground" />
             <Input
               type="search"
-              placeholder="Buscar por nome, código de barras..."
+              placeholder="Buscar por nome, modelo, serial, código..."
               className="pl-8 w-full"
               value={searchTerm}
               onChange={(e) => setSearchTerm(e.target.value)}
@@ -308,9 +346,11 @@ export default function EquipamentosPage() {
             <TableHeader>
               <TableRow>
                 <TableHead>Nome</TableHead>
+                <TableHead className="hidden sm:table-cell">Modelo</TableHead>
+                <TableHead className="hidden md:table-cell">Nº de Série</TableHead>
                 <TableHead>Código de Barras</TableHead>
                 <TableHead>Setor</TableHead>
-                <TableHead className="hidden md:table-cell">Descrição</TableHead>
+                <TableHead className="hidden lg:table-cell">Descrição</TableHead>
                 <TableHead className="text-right">Ações</TableHead>
               </TableRow>
             </TableHeader>
@@ -323,9 +363,11 @@ export default function EquipamentosPage() {
                   )}
                 >
                   <TableCell className="font-medium">{equipment.name}</TableCell>
+                  <TableCell className="hidden sm:table-cell max-w-[150px] truncate">{equipment.model || 'N/A'}</TableCell>
+                  <TableCell className="hidden md:table-cell max-w-[150px] truncate">{equipment.serialNumber || 'N/A'}</TableCell>
                   <TableCell>{equipment.barcode}</TableCell>
                   <TableCell>{equipment.sectorName || 'N/A'}</TableCell>
-                  <TableCell className="hidden md:table-cell max-w-xs truncate">{equipment.description || 'N/A'}</TableCell>
+                  <TableCell className="hidden lg:table-cell max-w-xs truncate">{equipment.description || 'N/A'}</TableCell>
                   <TableCell className="text-right">
                     <Button variant="ghost" size="icon" onClick={() => openEditDialog(equipment)} className="hover:text-primary">
                       <Edit className="h-4 w-4" />
@@ -355,7 +397,7 @@ export default function EquipamentosPage() {
                 </TableRow>
               )) : (
                 <TableRow>
-                  <TableCell colSpan={5} className="text-center h-24">
+                  <TableCell colSpan={7} className="text-center h-24">
                     Nenhum equipamento encontrado.
                   </TableCell>
                 </TableRow>

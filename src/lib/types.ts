@@ -2,7 +2,9 @@
 export interface Equipment {
   id: string;
   name: string;
-  description?: string; // Made optional
+  model?: string; // Novo campo
+  serialNumber?: string; // Novo campo
+  description?: string;
   barcode: string;
   sectorId?: string;
   sectorName?: string; // For display purposes

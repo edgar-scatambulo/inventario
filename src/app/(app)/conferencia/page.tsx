@@ -145,6 +145,8 @@ export default function ConferenciaPage() {
                     <h3 className="text-xl font-semibold">Equipamento Encontrado e Conferido!</h3>
                   </div>
                   <div><strong>Nome:</strong> {checkedEquipment.name}</div>
+                  <div><strong>Modelo:</strong> {checkedEquipment.model || 'N/A'}</div>
+                  <div><strong>Nº de Série:</strong> {checkedEquipment.serialNumber || 'N/A'}</div>
                   <div><strong>Descrição:</strong> {checkedEquipment.description || 'N/A'}</div>
                   <div><strong>Código de Barras:</strong> {checkedEquipment.barcode}</div>
                   <div><strong>Setor:</strong> {checkedEquipment.sectorName || 'Não atribuído'}</div>

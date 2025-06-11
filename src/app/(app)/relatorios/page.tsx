@@ -82,6 +82,8 @@ export default function RelatoriosPage() {
   const filteredReportItems = reportData?.items.filter(item => 
     item.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
     item.barcode.includes(searchTerm) ||
+    (item.model && item.model.toLowerCase().includes(searchTerm.toLowerCase())) ||
+    (item.serialNumber && item.serialNumber.toLowerCase().includes(searchTerm.toLowerCase())) ||
     (item.description && item.description.toLowerCase().includes(searchTerm.toLowerCase()))
   ) || [];
 
@@ -174,10 +176,12 @@ export default function RelatoriosPage() {
                 <Table>
                   <TableHeader>
                     <TableRow>
-                      <TableHead>Nome do Equipamento</TableHead>
-                      <TableHead>Código de Barras</TableHead>
+                      <TableHead>Nome</TableHead>
+                      <TableHead className="hidden sm:table-cell">Modelo</TableHead>
+                      <TableHead className="hidden md:table-cell">Nº de Série</TableHead>
+                      <TableHead>Cód. Barras</TableHead>
                       {(reportData.type === 'total' || reportData.type === 'notConferenced') && <TableHead>Setor</TableHead>}
-                      <TableHead className="hidden md:table-cell">Descrição</TableHead>
+                      <TableHead className="hidden lg:table-cell">Descrição</TableHead>
                        <TableHead className="hidden sm:table-cell">Última Conferência</TableHead>
                     </TableRow>
                   </TableHeader>
@@ -185,9 +189,11 @@ export default function RelatoriosPage() {
                     {filteredReportItems.map(item => (
                       <TableRow key={item.id}>
                         <TableCell className="font-medium">{item.name}</TableCell>
+                        <TableCell className="hidden sm:table-cell max-w-[150px] truncate">{item.model || 'N/A'}</TableCell>
+                        <TableCell className="hidden md:table-cell max-w-[150px] truncate">{item.serialNumber || 'N/A'}</TableCell>
                         <TableCell>{item.barcode}</TableCell>
                         {(reportData.type === 'total' || reportData.type === 'notConferenced') && <TableCell>{item.sectorName || 'N/A'}</TableCell>}
-                        <TableCell className="hidden md:table-cell max-w-xs truncate">{item.description || 'N/A'}</TableCell>
+                        <TableCell className="hidden lg:table-cell max-w-xs truncate">{item.description || 'N/A'}</TableCell>
                         <TableCell className="hidden sm:table-cell">
                           {item.lastCheckedTimestamp 
                             ? new Date(item.lastCheckedTimestamp).toLocaleString() 

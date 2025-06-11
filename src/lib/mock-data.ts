@@ -12,6 +12,8 @@ export const mockEquipment: Equipment[] = [
   {
     id: 'equip-1',
     name: 'Notebook Dell Latitude 7420',
+    model: 'Latitude 7420',
+    serialNumber: 'SN7420XYZ001',
     description: 'Processador i7, 16GB RAM, 512GB SSD',
     barcode: '8901234567890',
     sectorId: 'sector-1',
@@ -20,6 +22,8 @@ export const mockEquipment: Equipment[] = [
   {
     id: 'equip-2',
     name: 'Monitor LG UltraWide 34"',
+    model: '34WN750-B',
+    serialNumber: 'SNLG34MON002',
     description: 'Resolução 3440x1440, Curvo',
     barcode: '8901234567891',
     sectorId: 'sector-1',
@@ -28,6 +32,8 @@ export const mockEquipment: Equipment[] = [
   {
     id: 'equip-3',
     name: 'Apple MacBook Pro 16"',
+    model: 'MacBookPro18,1',
+    serialNumber: 'SNMBP16M2P003',
     description: 'Chip M2 Pro, 32GB RAM, 1TB SSD',
     barcode: '8901234567892',
     sectorId: 'sector-2',
@@ -36,6 +42,8 @@ export const mockEquipment: Equipment[] = [
   {
     id: 'equip-4',
     name: 'Impressora HP LaserJet Pro',
+    model: 'M428fdw',
+    serialNumber: 'SNHPLJM428004',
     description: 'Multifuncional, Wi-Fi',
     barcode: '8901234567893',
     sectorId: 'sector-3',
@@ -44,6 +52,8 @@ export const mockEquipment: Equipment[] = [
   {
     id: 'equip-5',
     name: 'Projetor Epson PowerLite',
+    model: '1781W',
+    serialNumber: 'SNEPSPL1781005',
     description: '3LCD, Full HD',
     barcode: '8901234567894',
     sectorId: 'sector-5',
@@ -52,6 +62,8 @@ export const mockEquipment: Equipment[] = [
   {
     id: 'equip-6',
     name: 'Cadeira Ergonômica Herman Miller',
+    model: 'Aeron Remastered',
+    serialNumber: 'SNHMAERON006',
     description: 'Modelo Aeron, Tamanho B',
     barcode: '8901234567895',
     sectorId: 'sector-4',
