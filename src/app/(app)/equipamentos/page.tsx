@@ -2,7 +2,7 @@
 "use client";
 
 import * as React from 'react';
-import { PlusCircle, Edit, Trash2, Search, Filter, FileDown } from 'lucide-react';
+import { PlusCircle, Edit, Trash2, Search, Filter, FileDown, ClipboardX } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import {
   Table,
@@ -63,15 +63,20 @@ type EquipmentFormValues = z.infer<typeof equipmentFormSchema>;
 const EQUIPMENTS_STORAGE_KEY = 'localStorage_equipments';
 const SECTORS_STORAGE_KEY = 'localStorage_sectors';
 const NO_SECTOR_VALUE = "NO_SECTOR_ASSIGNED_VALUE";
+const ALL_SECTORS_VALUE = "--ALL_SECTORS--";
 
 export default function EquipamentosPage() {
   const { toast } = useToast();
   const [equipments, setEquipments] = React.useState<Equipment[]>([]);
   const [sectors, setSectors] = React.useState<Sector[]>([]);
-  const [isDialogOpen, setIsDialogOpen] = React.useState(false);
+  const [isFormDialogOpen, setIsFormDialogOpen] = React.useState(false);
   const [editingEquipment, setEditingEquipment] = React.useState<Equipment | null>(null);
   const [searchTerm, setSearchTerm] = React.useState('');
   const [filterSector, setFilterSector] = React.useState<string | undefined>(undefined);
+
+  const [isMarkUncheckedDialogOpen, setIsMarkUncheckedDialogOpen] = React.useState(false);
+  const [sectorToMarkUnchecked, setSectorToMarkUnchecked] = React.useState<string | undefined>(undefined);
+
 
   const form = useForm<EquipmentFormValues>({
     resolver: zodResolver(equipmentFormSchema),
@@ -118,7 +123,7 @@ export default function EquipamentosPage() {
     } else {
       form.reset({ type: '', name: '', model: '', serialNumber: '', description: '', barcode: '', sectorId: NO_SECTOR_VALUE });
     }
-  }, [editingEquipment, form, isDialogOpen]);
+  }, [editingEquipment, form, isFormDialogOpen]);
 
   const handleAddOrUpdateEquipment = (data: EquipmentFormValues) => {
     const finalSectorId = (data.sectorId === NO_SECTOR_VALUE || data.sectorId === '')
@@ -161,7 +166,7 @@ export default function EquipamentosPage() {
     }
     setEquipments(updatedEquipments);
     localStorage.setItem(EQUIPMENTS_STORAGE_KEY, JSON.stringify(updatedEquipments));
-    setIsDialogOpen(false);
+    setIsFormDialogOpen(false);
     setEditingEquipment(null);
   };
 
@@ -174,7 +179,7 @@ export default function EquipamentosPage() {
 
   const openEditDialog = (equipment: Equipment) => {
     setEditingEquipment(equipment);
-    setIsDialogOpen(true);
+    setIsFormDialogOpen(true);
   };
   
   const filteredEquipments = equipments.filter(eq => {
@@ -196,12 +201,48 @@ export default function EquipamentosPage() {
     });
   };
 
+  const handleConfirmMarkAsNotChecked = () => {
+    if (!sectorToMarkUnchecked) {
+      toast({
+        variant: 'destructive',
+        title: 'Seleção Necessária',
+        description: 'Por favor, selecione um setor ou "Todos os Setores".'
+      });
+      return;
+    }
+
+    const updatedEquipments = equipments.map(eq => {
+      if (sectorToMarkUnchecked === ALL_SECTORS_VALUE) {
+        return { ...eq, lastCheckedTimestamp: undefined };
+      }
+      if (eq.sectorId === sectorToMarkUnchecked) {
+        return { ...eq, lastCheckedTimestamp: undefined };
+      }
+      return eq;
+    });
+
+    setEquipments(updatedEquipments);
+    localStorage.setItem(EQUIPMENTS_STORAGE_KEY, JSON.stringify(updatedEquipments));
+    
+    const sectorName = sectorToMarkUnchecked === ALL_SECTORS_VALUE 
+      ? "todos os setores" 
+      : sectors.find(s => s.id === sectorToMarkUnchecked)?.name || "setor selecionado";
+    
+    toast({
+      title: 'Sucesso!',
+      description: `Equipamentos de ${sectorName} marcados como não conferidos.`
+    });
+    setIsMarkUncheckedDialogOpen(false);
+    setSectorToMarkUnchecked(undefined); 
+  };
+
+
   return (
     <Card className="shadow-lg">
       <CardHeader>
         <div className="flex flex-col sm:flex-row justify-between items-center gap-4">
           <CardTitle className="text-2xl font-headline">Gerenciamento de Equipamentos</CardTitle>
-          <Dialog open={isDialogOpen} onOpenChange={(open) => { setIsDialogOpen(open); if (!open) setEditingEquipment(null); }}>
+          <Dialog open={isFormDialogOpen} onOpenChange={(open) => { setIsFormDialogOpen(open); if (!open) setEditingEquipment(null); }}>
             <DialogTrigger asChild>
               <Button variant="default">
                 <PlusCircle className="mr-2 h-5 w-5" /> Adicionar Equipamento
@@ -348,8 +389,8 @@ export default function EquipamentosPage() {
             </DialogContent>
           </Dialog>
         </div>
-        <div className="mt-4 flex flex-col sm:flex-row gap-2">
-          <div className="relative w-full sm:flex-1">
+        <div className="mt-4 flex flex-col sm:flex-row flex-wrap gap-2">
+          <div className="relative w-full sm:flex-1 min-w-[200px]">
             <Search className="absolute left-2.5 top-2.5 h-4 w-4 text-muted-foreground" />
             <Input
               type="search"
@@ -360,7 +401,7 @@ export default function EquipamentosPage() {
             />
           </div>
           <Select value={filterSector || "all"} onValueChange={(value) => setFilterSector(value === "all" ? undefined : value)}>
-            <SelectTrigger className="w-full sm:w-[180px]">
+            <SelectTrigger className="w-full sm:w-auto min-w-[180px]">
                <Filter className="mr-2 h-4 w-4 text-muted-foreground" />
               <SelectValue placeholder="Filtrar por setor" />
             </SelectTrigger>
@@ -371,9 +412,53 @@ export default function EquipamentosPage() {
               ))}
             </SelectContent>
           </Select>
-          <Button variant="outline" onClick={handleExportClick}>
+          <Button variant="outline" onClick={handleExportClick} className="w-full sm:w-auto">
             <FileDown className="mr-2 h-4 w-4" /> Exportar
           </Button>
+           <AlertDialog open={isMarkUncheckedDialogOpen} onOpenChange={setIsMarkUncheckedDialogOpen}>
+            <AlertDialogTrigger asChild>
+              <Button variant="outline" className="w-full sm:w-auto" onClick={() => { setSectorToMarkUnchecked(undefined); setIsMarkUncheckedDialogOpen(true); }}>
+                <ClipboardX className="mr-2 h-4 w-4" /> Limpar Conferências
+              </Button>
+            </AlertDialogTrigger>
+            <AlertDialogContent>
+              <AlertDialogHeader>
+                <AlertDialogTitle>Limpar Status de Conferência</AlertDialogTitle>
+                <AlertDialogDescription>
+                  Selecione um setor para marcar seus equipamentos como não conferidos, ou "Todos os Setores" para limpar de todos. Esta ação removerá o registro da última conferência.
+                </AlertDialogDescription>
+              </AlertDialogHeader>
+              <div className="py-4 space-y-2">
+                <Label htmlFor="select-sector-uncheck">Setor Alvo</Label>
+                <Select 
+                  value={sectorToMarkUnchecked} 
+                  onValueChange={setSectorToMarkUnchecked}
+                >
+                  <SelectTrigger id="select-sector-uncheck">
+                    <SelectValue placeholder="Selecione um setor ou todos" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value={ALL_SECTORS_VALUE}>Todos os Setores</SelectItem>
+                    {sectors.map(sector => (
+                      <SelectItem key={sector.id} value={sector.id}>
+                        {sector.name}
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+              </div>
+              <AlertDialogFooter>
+                <AlertDialogCancel onClick={() => setSectorToMarkUnchecked(undefined)}>Cancelar</AlertDialogCancel>
+                <AlertDialogAction 
+                  onClick={handleConfirmMarkAsNotChecked}
+                  disabled={!sectorToMarkUnchecked}
+                  className={cn(!sectorToMarkUnchecked && "bg-destructive/50 hover:bg-destructive/50")}
+                >
+                  Confirmar Limpeza
+                </AlertDialogAction>
+              </AlertDialogFooter>
+            </AlertDialogContent>
+          </AlertDialog>
         </div>
       </CardHeader>
       <CardContent>
@@ -422,7 +507,7 @@ export default function EquipamentosPage() {
                         <AlertDialogHeader>
                           <AlertDialogTitle>Confirmar Exclusão</AlertDialogTitle>
                           <AlertDialogDescription>
-                            Tem certeza que deseja excluir o equipamento "{equipment.name}"? Esta ação não pode ser desfeita.
+                            Tem certeza que deseja excluir o equipamento "{equipment.name} ({equipment.type})"? Esta ação não pode ser desfeita.
                           </AlertDialogDescription>
                         </AlertDialogHeader>
                         <AlertDialogFooter>
@@ -447,3 +532,6 @@ export default function EquipamentosPage() {
     </Card>
   );
 }
+
+
+    
