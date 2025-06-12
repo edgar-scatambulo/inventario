@@ -5,7 +5,6 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/com
 import { Button } from "@/components/ui/button";
 import Link from "next/link";
 import { Package, ScanBarcode, FileText, ArrowRight, PieChart as PieChartIcon, AlertTriangle } from "lucide-react";
-import Image from "next/image";
 import type { Equipment, Sector } from '@/lib/types';
 import { mockEquipment, mockSectors } from '@/lib/mock-data'; 
 
@@ -124,21 +123,13 @@ export default function DashboardPage() {
           </CardDescription>
         </CardHeader>
         <CardContent>
-          <Image
-            src="https://storage.googleapis.com/gemini-studio-assets/image_13460a36e6b541f6.jpeg"
-            alt="Pessoa conferindo inventário com prancheta e caixas ao fundo"
-            width={1200}
-            height={400}
-            className="w-full rounded-lg object-cover"
-            data-ai-hint="inventory checklist"
-            priority
-          />
+          {/* Image removed from here */}
         </CardContent>
       </Card>
 
       <section>
         <h2 className="mb-6 text-2xl font-semibold text-foreground">Acesso Rápido</h2>
-        <div className="grid grid-cols-1 gap-6 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-3"> {/* Adjusted for 3 items */}
+        <div className="grid grid-cols-1 gap-6 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-3">
           {quickAccessItems.map((item) => (
             <Card key={item.title} className="transform transition-all hover:scale-105 hover:shadow-xl">
               <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
