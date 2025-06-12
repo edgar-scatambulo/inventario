@@ -25,8 +25,8 @@
     --secondary: 200 60% 92%;
     --secondary-foreground: 200 40% 30%;
 
-    --accent: 120 73% 75%; /* 90EE90 - Verde (destaque) */
-    --accent-foreground: 120 60% 20%;
+    --accent: 210 60% 78%; /* A6C8EA - Destaque Azul Claro */
+    --accent-foreground: 210 50% 25%; /* Azul Escuro para texto em Destaque Azul Claro */
 
     --destructive: 0 84.2% 60.2%;
     --destructive-foreground: 0 0% 98%;
@@ -34,8 +34,8 @@
     --ring: 200 60% 70%; /* Focus ring, derived from primary */
     --radius: 0.5rem;
 
-    /* Custom success color, distinct from general accent if needed */
-    --success: 120 73% 75%; /* Same as accent for this theme */
+    /* Custom success color */
+    --success: 120 73% 75%; /* 90EE90 - Verde Sucesso */
     --success-foreground: 120 60% 20%;
 
     /* Sidebar specific colors */
@@ -78,13 +78,18 @@
     --secondary: 217 33% 28%;
     --secondary-foreground: 210 40% 98%;
 
-    --accent: 120 65% 60%; /* Darker accent green */
-    --accent-foreground: 120 30% 10%;
+    --accent: 210 60% 65%; /* Destaque Azul Claro (Modo Escuro) */
+    --accent-foreground: 210 50% 15%; /* Azul Muito Escuro para texto em Destaque Azul Claro (Modo Escuro) */
 
     --destructive: 0 63% 31%;
     --destructive-foreground: 0 0% 98%;
 
     --ring: 200 60% 50%;
+
+    /* Success colors for dark mode (if needed, could be inherited or explicitly set) */
+    /* --success: 120 65% 60%; */ /* Example: Darker success green */
+    /* --success-foreground: 120 30% 10%; */ /* Example: Dark green text for success */
+
 
     --sidebar-background: 217 33% 15%;
     --sidebar-foreground: 210 40% 98%;
