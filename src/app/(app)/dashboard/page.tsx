@@ -1,4 +1,3 @@
-
 "use client";
 import * as React from 'react';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
@@ -8,11 +7,13 @@ import { Package, ScanBarcode, FileText, ArrowRight, PieChart as PieChartIcon, A
 import type { Equipment, Sector } from '@/lib/types';
 import { mockEquipment, mockSectors } from '@/lib/mock-data'; 
 
-import { PieChart, Pie, Cell, BarChart, Bar, XAxis, YAxis, CartesianGrid, ResponsiveContainer } from 'recharts'; 
+import { PieChart, Pie, Cell, BarChart, Bar, XAxis, YAxis, CartesianGrid, ResponsiveContainer, Legend } from 'recharts'; 
 import {
   ChartContainer,
   ChartTooltip,
   ChartTooltipContent,
+  ChartLegend,
+  ChartLegendContent,
   type ChartConfig
 } from "@/components/ui/chart";
 
@@ -29,25 +30,32 @@ const conferenceChartConfig = {
   conferidos: { 
     label: "Conferidos",
     theme: {
-      light: "hsl(220, 70%, 50%)", // Azul
-      dark: "hsl(220, 70%, 65%)",  // Azul mais claro para modo escuro
+      light: "hsl(220, 70%, 50%)", 
+      dark: "hsl(220, 70%, 65%)",  
     },
   },
   naoConferidos: { 
     label: "Não Conferidos",
     theme: {
-      light: "hsl(0, 80%, 60%)",   // Vermelho
-      dark: "hsl(0, 75%, 55%)",    // Vermelho mais claro para modo escuro
+      light: "hsl(0, 80%, 60%)",   
+      dark: "hsl(0, 75%, 55%)",    
     },
   },
 } satisfies ChartConfig;
 
 const equipmentsBySectorChartConfig = {
-  count: {
-    label: "Equipamentos",
+  conferidos: {
+    label: "Conferidos",
     theme: {
-      light: "hsl(var(--chart-1))", 
-      dark: "hsl(var(--chart-1))",
+      light: "hsl(220, 70%, 50%)", 
+      dark: "hsl(220, 70%, 65%)",
+    },
+  },
+  naoConferidos: {
+    label: "Não Conferidos",
+    theme: {
+      light: "hsl(0, 80%, 60%)",   
+      dark: "hsl(0, 75%, 55%)",
     },
   },
 } satisfies ChartConfig;
@@ -68,9 +76,9 @@ export default function DashboardPage() {
   const [totalEquipments, setTotalEquipments] = React.useState<number>(0);
   const [totalSectors, setTotalSectors] = React.useState<number>(0);
   const [itemsCheckedTodayCount, setItemsCheckedTodayCount] = React.useState<number>(0);
-  const [itemsNotCheckedCount, setItemsNotCheckedCount] = React.useState<number>(0);
+  const [itemsNotCheckedCount, setItemsNotCheckedCount] = React.useState<number>(0); // Total not checked overall
   const [conferenceChartData, setConferenceChartData] = React.useState<Array<{ category: keyof typeof conferenceChartConfig; value: number; fill: string }>>([]);
-  const [equipmentsBySectorData, setEquipmentsBySectorData] = React.useState<Array<{ name: string; count: number }>>([]);
+  const [equipmentsBySectorData, setEquipmentsBySectorData] = React.useState<Array<{ name: string; conferidos: number; naoConferidos: number }>>([]);
 
   React.useEffect(() => {
     let equipments: Equipment[] = [];
@@ -89,37 +97,47 @@ export default function DashboardPage() {
     setTotalEquipments(equipments.length);
 
     let checkedToday = 0;
-    let totalConferenced = 0;
-    let totalNotConferencedInEffect = 0;
+    let totalOverallConferenced = 0;
+    let totalOverallNotConferenced = 0;
 
     equipments.forEach(eq => {
       if (eq.lastCheckedTimestamp) {
-        totalConferenced++;
+        totalOverallConferenced++;
         if (isTimestampToday(eq.lastCheckedTimestamp)) {
           checkedToday++;
         }
       } else {
-        totalNotConferencedInEffect++;
+        totalOverallNotConferenced++;
       }
     });
     setItemsCheckedTodayCount(checkedToday);
-    setItemsNotCheckedCount(totalNotConferencedInEffect);
+    setItemsNotCheckedCount(totalOverallNotConferenced); // Set total not checked count
     
     setConferenceChartData([
-      { category: "conferidos", value: totalConferenced, fill: 'var(--color-conferidos)' },
-      { category: "naoConferidos", value: totalNotConferencedInEffect, fill: 'var(--color-naoConferidos)' },
+      { category: "conferidos", value: totalOverallConferenced, fill: 'var(--color-conferidos)' },
+      { category: "naoConferidos", value: totalOverallNotConferenced, fill: 'var(--color-naoConferidos)' },
     ]);
 
-    const sectorCounts: { [key: string]: number } = {};
+    const sectorAggregates: { [key: string]: { conferidos: number; naoConferidos: number } } = {};
     equipments.forEach(eq => {
       const sectorName = eq.sectorName || "Não Atribuído";
-      sectorCounts[sectorName] = (sectorCounts[sectorName] || 0) + 1;
+      if (!sectorAggregates[sectorName]) {
+        sectorAggregates[sectorName] = { conferidos: 0, naoConferidos: 0 };
+      }
+      if (eq.lastCheckedTimestamp) {
+        sectorAggregates[sectorName].conferidos++;
+      } else {
+        sectorAggregates[sectorName].naoConferidos++;
+      }
     });
 
-    const bySectorData = Object.entries(sectorCounts).map(([name, count]) => ({
-      name,
-      count,
-    })).sort((a, b) => b.count - a.count); 
+    const bySectorData = Object.entries(sectorAggregates)
+      .map(([name, counts]) => ({
+        name,
+        conferidos: counts.conferidos,
+        naoConferidos: counts.naoConferidos,
+      }))
+      .sort((a, b) => (b.conferidos + b.naoConferidos) - (a.conferidos + a.naoConferidos)); 
     setEquipmentsBySectorData(bySectorData);
 
 
@@ -195,7 +213,7 @@ export default function DashboardPage() {
             <div className="flex justify-between items-center p-3 bg-destructive/10 rounded-md border border-destructive/50">
               <div className="flex items-center">
                 <AlertTriangle className="mr-2 h-5 w-5 text-destructive/80" />
-                <span className="font-medium text-foreground">Não Conferidos:</span>
+                <span className="font-medium text-foreground">Não Conferidos (Total):</span>
               </div>
               <span className="text-xl font-bold text-foreground">{itemsNotCheckedCount}</span>
             </div>
@@ -211,7 +229,7 @@ export default function DashboardPage() {
               <PieChartIcon className="mr-2 h-6 w-6 text-primary" />
               Status da Conferência
             </CardTitle>
-            <CardDescription>Equipamentos conferidos vs. não conferidos.</CardDescription>
+            <CardDescription>Total de equipamentos conferidos vs. não conferidos.</CardDescription>
           </CardHeader>
           <CardContent>
             {totalEquipments > 0 ? (
@@ -238,6 +256,7 @@ export default function DashboardPage() {
                     label={({ value, percent, x, y, midAngle, name, cx, cy, innerRadius: pieInnerRadius, outerRadius: pieOuterRadius }) => {
                        if (value === 0) return null; 
                        const nonZeroSlices = conferenceChartData.filter(d => d.value > 0).length;
+                       // Hide label if slice is too small (e.g. < 8%) AND there's more than one slice with value
                        if (percent < 0.08 && nonZeroSlices > 1) return null; 
                        
                        return (
@@ -276,40 +295,60 @@ export default function DashboardPage() {
               <BarChartBig className="mr-2 h-6 w-6 text-primary" />
               Equipamentos por Setor
             </CardTitle>
-            <CardDescription>Quantitativo de equipamentos em cada setor.</CardDescription>
+            <CardDescription>Conferidos vs. Não Conferidos por setor.</CardDescription>
           </CardHeader>
           <CardContent>
             {equipmentsBySectorData.length > 0 ? (
-              <ChartContainer config={equipmentsBySectorChartConfig} className="mx-auto aspect-video max-h-[280px] sm:max-h-[300px]">
+              <ChartContainer config={equipmentsBySectorChartConfig} className="mx-auto aspect-video max-h-[320px] sm:max-h-[350px]">
                 <ResponsiveContainer width="100%" height="100%">
-                  <BarChart data={equipmentsBySectorData} margin={{ top: 5, right: 20, left: 5, bottom: 25 }}>
+                  <BarChart 
+                    data={equipmentsBySectorData} 
+                    margin={{ top: 5, right: 20, left: -10, bottom: equipmentsBySectorData.length > 4 ? 60 : 25 }}
+                  >
                     <CartesianGrid vertical={false} strokeDasharray="3 3" />
                     <XAxis 
                       type="category" 
                       dataKey="name" 
                       tick={{ fontSize: 10, fill: "hsl(var(--muted-foreground))" }} 
                       interval={0} 
-                      angle={equipmentsBySectorData.length > 5 ? -30 : 0}
-                      textAnchor={equipmentsBySectorData.length > 5 ? "end" : "middle"}
-                      height={equipmentsBySectorData.length > 5 ? 50 : 30}
+                      angle={equipmentsBySectorData.length > 4 ? -35 : 0}
+                      textAnchor={equipmentsBySectorData.length > 4 ? "end" : "middle"}
+                      height={equipmentsBySectorData.length > 4 ? 50 : 30}
                     />
                     <YAxis 
                       type="number" 
-                      dataKey="count" 
                       allowDecimals={false}
                       tickFormatter={(value) => value.toString()}
-                      width={30}
+                      width={40}
                     />
                     <ChartTooltip
                       cursor={{ fill: 'hsl(var(--muted))' }}
-                      content={<ChartTooltipContent 
-                                  formatter={(value, nameKey, entry) => { 
-                                      return [`${value} itens`, `Setor: ${entry.payload.name}`];
-                                  }}
-                                  indicator="dot" 
-                               />}
+                      content={({ active, payload, label }) => {
+                        if (active && payload && payload.length) {
+                          const data = payload[0].payload;
+                          return (
+                            <div className="rounded-lg border bg-background p-2.5 shadow-sm min-w-[180px]">
+                              <p className="mb-1.5 text-center font-medium">{label}</p>
+                              {payload.map((entry, index) => (
+                                <div key={`item-${index}`} className="flex justify-between items-center text-sm mb-0.5">
+                                  <span style={{ color: entry.color }}>
+                                    {equipmentsBySectorChartConfig[entry.dataKey as keyof typeof equipmentsBySectorChartConfig]?.label || entry.name}:
+                                  </span>
+                                  <span className="font-semibold ml-2">{entry.value}</span>
+                                </div>
+                              ))}
+                            </div>
+                          );
+                        }
+                        return null;
+                      }}
                     />
-                    <Bar dataKey="count" fill="var(--color-count)" radius={[4, 4, 0, 0]} barSize={equipmentsBySectorData.length > 8 ? 15 : 25} />
+                    <ChartLegend 
+                      content={<ChartLegendContent nameKey="name" />} 
+                      wrapperStyle={{ paddingTop: '10px' }}
+                    />
+                    <Bar dataKey="conferidos" stackId="a" fill="var(--color-conferidos)" radius={[4, 4, 0, 0]} barSize={equipmentsBySectorData.length > 8 ? 20 : 30} />
+                    <Bar dataKey="naoConferidos" stackId="a" fill="var(--color-naoConferidos)" radius={[4, 4, 0, 0]} barSize={equipmentsBySectorData.length > 8 ? 20 : 30} />
                   </BarChart>
                 </ResponsiveContainer>
               </ChartContainer>
@@ -317,7 +356,7 @@ export default function DashboardPage() {
               <div className="flex flex-col items-center justify-center h-[280px] text-center">
                 <BarChartBig className="h-16 w-16 text-muted-foreground/50 mb-4" />
                 <p className="text-muted-foreground">Nenhum equipamento para exibir.</p>
-                <p className="text-sm text-muted-foreground">Cadastre equipamentos e atribua-os a setores.</p>
+                <p className="text-sm text-muted-foreground">Cadastre equipamentos, atribua-os a setores e confira-os.</p>
               </div>
             )}
           </CardContent>
