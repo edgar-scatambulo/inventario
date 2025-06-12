@@ -192,6 +192,18 @@ export default function EquipamentosPage() {
                           (eq.description && eq.description.toLowerCase().includes(searchTerm.toLowerCase()));
     const matchesSector = (filterSector && filterSector !== 'all') ? eq.sectorId === filterSector : true;
     return matchesSearch && matchesSector;
+  }).sort((a, b) => {
+    // Usando um caractere Unicode alto para empurrar valores indefinidos/nulos para o final
+      const sectorNameA = a.sectorName || '\uffff'; 
+      const sectorNameB = b.sectorName || '\uffff';
+      const typeA = a.type || '\uffff';
+      const typeB = b.type || '\uffff';
+
+      const sectorCompare = sectorNameA.localeCompare(sectorNameB);
+      if (sectorCompare !== 0) {
+        return sectorCompare;
+      }
+      return typeA.localeCompare(typeB);
   });
 
   const handleExportClick = () => {
