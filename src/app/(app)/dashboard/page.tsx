@@ -9,7 +9,7 @@ import Image from "next/image";
 import type { Equipment, Sector } from '@/lib/types';
 import { mockEquipment, mockSectors } from '@/lib/mock-data'; 
 
-import { PieChart, Pie, Cell, Tooltip } from 'recharts'; 
+import { PieChart, Pie, Cell } from 'recharts'; 
 import {
   ChartContainer,
   ChartTooltip,
@@ -28,13 +28,19 @@ const EQUIPMENTS_STORAGE_KEY = 'localStorage_equipments';
 const SECTORS_STORAGE_KEY = 'localStorage_sectors';
 
 const conferenceChartConfig = {
-  conferidos: {
+  conferidos: { // Azul
     label: "Conferidos",
-    color: "hsl(var(--chart-1))",
+    theme: {
+      light: "hsl(220, 70%, 50%)", 
+      dark: "hsl(220, 70%, 65%)",  
+    },
   },
-  naoConferidos: {
+  naoConferidos: { // Vermelho
     label: "Não Conferidos",
-    color: "hsl(var(--chart-2))",
+    theme: {
+      light: "hsl(0, 80%, 60%)",   
+      dark: "hsl(0, 75%, 55%)",    
+    },
   },
 } satisfies ChartConfig;
 
@@ -91,8 +97,8 @@ export default function DashboardPage() {
     setItemsNotCheckedCount(totalNotConferencedInEffect);
     
     setConferenceChartData([
-      { category: "conferidos", value: totalConferenced, fill: conferenceChartConfig.conferidos.color },
-      { category: "naoConferidos", value: totalNotConferencedInEffect, fill: conferenceChartConfig.naoConferidos.color },
+      { category: "conferidos", value: totalConferenced, fill: 'var(--color-conferidos)' },
+      { category: "naoConferidos", value: totalNotConferencedInEffect, fill: 'var(--color-naoConferidos)' },
     ]);
 
     const storedSectors = localStorage.getItem(SECTORS_STORAGE_KEY);
@@ -200,8 +206,9 @@ export default function DashboardPage() {
                     cursor={true} 
                     content={<ChartTooltipContent 
                                 formatter={(value, name) => {
+                                  // Here 'name' will be 'conferidos' or 'naoConferidos'
                                   const configEntry = conferenceChartConfig[name as keyof typeof conferenceChartConfig];
-                                  return [`${value}`, configEntry.label];
+                                  return [`${value}`, configEntry.label]; // Display value and its configured label
                                 }}
                                 indicator="dot" 
                              />}
@@ -209,14 +216,16 @@ export default function DashboardPage() {
                   <Pie
                     data={conferenceChartData}
                     dataKey="value"
-                    nameKey="category"
+                    nameKey="category" // This refers to 'conferidos' or 'naoConferidos' from data
                     innerRadius={60} 
                     outerRadius={100} 
                     strokeWidth={2}
                     labelLine={false}
-                    label={({ value, percent, x, y, midAngle, name, innerRadius, outerRadius }) => {
-                       if (value === 0) return null;
-                       if (percent < 0.08 && conferenceChartData.length > 1) return null; 
+                    label={({ value, percent, x, y, midAngle, name, cx, cy, innerRadius, outerRadius }) => {
+                       if (value === 0) return null; // Don't render label if value is 0
+                       // Simple threshold to hide label if slice is too small, but only if there's more than one slice with data
+                       const nonZeroSlices = conferenceChartData.filter(d => d.value > 0).length;
+                       if (percent < 0.08 && nonZeroSlices > 1) return null; 
                        
                        return (
                         <text
@@ -251,3 +260,6 @@ export default function DashboardPage() {
     </div>
   );
 }
+
+
+    
