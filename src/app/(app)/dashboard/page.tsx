@@ -4,11 +4,11 @@ import * as React from 'react';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import Link from "next/link";
-import { Package, ScanBarcode, FileText, ArrowRight, PieChart as PieChartIcon, AlertTriangle, BarChartHorizontalBig } from "lucide-react";
+import { Package, ScanBarcode, FileText, ArrowRight, PieChart as PieChartIcon, AlertTriangle, BarChartBig } from "lucide-react";
 import type { Equipment, Sector } from '@/lib/types';
 import { mockEquipment, mockSectors } from '@/lib/mock-data'; 
 
-import { PieChart, Pie, Cell, BarChart, Bar, XAxis, YAxis, CartesianGrid } from 'recharts'; 
+import { PieChart, Pie, Cell, BarChart, Bar, XAxis, YAxis, CartesianGrid, ResponsiveContainer } from 'recharts'; 
 import {
   ChartContainer,
   ChartTooltip,
@@ -46,7 +46,7 @@ const equipmentsBySectorChartConfig = {
   count: {
     label: "Equipamentos",
     theme: {
-      light: "hsl(var(--chart-1))", // Using a predefined theme color
+      light: "hsl(var(--chart-1))", 
       dark: "hsl(var(--chart-1))",
     },
   },
@@ -147,7 +147,7 @@ export default function DashboardPage() {
           </CardDescription>
         </CardHeader>
         <CardContent>
-          {/* Image removed from here */}
+          {/* Image removed */}
         </CardContent>
       </Card>
 
@@ -211,11 +211,11 @@ export default function DashboardPage() {
               <PieChartIcon className="mr-2 h-6 w-6 text-primary" />
               Status da Conferência
             </CardTitle>
-            <CardDescription>Equipamentos conferidos vs. não conferidos no inventário total.</CardDescription>
+            <CardDescription>Equipamentos conferidos vs. não conferidos.</CardDescription>
           </CardHeader>
           <CardContent>
             {totalEquipments > 0 ? (
-              <ChartContainer config={conferenceChartConfig} className="mx-auto aspect-square max-h-[280px] sm:max-h-[300px]">
+               <ChartContainer config={conferenceChartConfig} className="mx-auto aspect-square max-h-[280px] sm:max-h-[300px]">
                 <PieChart>
                   <ChartTooltip
                     cursor={true} 
@@ -264,7 +264,7 @@ export default function DashboardPage() {
               <div className="flex flex-col items-center justify-center h-[280px] text-center">
                 <PieChartIcon className="h-16 w-16 text-muted-foreground/50 mb-4" />
                 <p className="text-muted-foreground">Nenhum equipamento cadastrado.</p>
-                <p className="text-sm text-muted-foreground">Adicione equipamentos para ver o status da conferência.</p>
+                <p className="text-sm text-muted-foreground">Adicione equipamentos para ver o status.</p>
               </div>
             )}
           </CardContent>
@@ -273,39 +273,49 @@ export default function DashboardPage() {
         <Card className="shadow-md lg:col-span-1">
           <CardHeader>
             <CardTitle className="flex items-center">
-              <BarChartHorizontalBig className="mr-2 h-6 w-6 text-primary" />
+              <BarChartBig className="mr-2 h-6 w-6 text-primary" />
               Equipamentos por Setor
             </CardTitle>
             <CardDescription>Quantitativo de equipamentos em cada setor.</CardDescription>
           </CardHeader>
           <CardContent>
             {equipmentsBySectorData.length > 0 ? (
-              <ChartContainer config={equipmentsBySectorChartConfig} className="mx-auto aspect-square max-h-[280px] sm:max-h-[300px]">
-                <BarChart data={equipmentsBySectorData} layout="vertical" margin={{ top: 5, right: 20, left: 25, bottom: 5 }}>
-                  <CartesianGrid horizontal={false} vertical={true} strokeDasharray="3 3" />
-                  <XAxis type="number" dataKey="count" tickFormatter={(value) => value.toString()} allowDecimals={false} />
-                  <YAxis 
-                    type="category" 
-                    dataKey="name" 
-                    width={80} 
-                    tick={{ fontSize: 10, fill: "hsl(var(--muted-foreground))" }} 
-                    interval={0} 
-                  />
-                  <ChartTooltip
-                    cursor={{ fill: 'hsl(var(--muted))' }}
-                    content={<ChartTooltipContent 
-                                formatter={(value, nameKey, entry) => { // value is count, entry.payload.name is sector name
-                                    return [`${value} itens`, `Setor: ${entry.payload.name}`];
-                                }}
-                                indicator="dot" 
-                             />}
-                  />
-                  <Bar dataKey="count" fill="var(--color-count)" radius={[0, 4, 4, 0]} barSize={20} />
-                </BarChart>
+              <ChartContainer config={equipmentsBySectorChartConfig} className="mx-auto aspect-video max-h-[280px] sm:max-h-[300px]">
+                <ResponsiveContainer width="100%" height="100%">
+                  <BarChart data={equipmentsBySectorData} margin={{ top: 5, right: 20, left: 5, bottom: 25 }}>
+                    <CartesianGrid vertical={false} strokeDasharray="3 3" />
+                    <XAxis 
+                      type="category" 
+                      dataKey="name" 
+                      tick={{ fontSize: 10, fill: "hsl(var(--muted-foreground))" }} 
+                      interval={0} 
+                      angle={equipmentsBySectorData.length > 5 ? -30 : 0}
+                      textAnchor={equipmentsBySectorData.length > 5 ? "end" : "middle"}
+                      height={equipmentsBySectorData.length > 5 ? 50 : 30}
+                    />
+                    <YAxis 
+                      type="number" 
+                      dataKey="count" 
+                      allowDecimals={false}
+                      tickFormatter={(value) => value.toString()}
+                      width={30}
+                    />
+                    <ChartTooltip
+                      cursor={{ fill: 'hsl(var(--muted))' }}
+                      content={<ChartTooltipContent 
+                                  formatter={(value, nameKey, entry) => { 
+                                      return [`${value} itens`, `Setor: ${entry.payload.name}`];
+                                  }}
+                                  indicator="dot" 
+                               />}
+                    />
+                    <Bar dataKey="count" fill="var(--color-count)" radius={[4, 4, 0, 0]} barSize={equipmentsBySectorData.length > 8 ? 15 : 25} />
+                  </BarChart>
+                </ResponsiveContainer>
               </ChartContainer>
             ) : (
               <div className="flex flex-col items-center justify-center h-[280px] text-center">
-                <BarChartHorizontalBig className="h-16 w-16 text-muted-foreground/50 mb-4" />
+                <BarChartBig className="h-16 w-16 text-muted-foreground/50 mb-4" />
                 <p className="text-muted-foreground">Nenhum equipamento para exibir.</p>
                 <p className="text-sm text-muted-foreground">Cadastre equipamentos e atribua-os a setores.</p>
               </div>
@@ -316,5 +326,3 @@ export default function DashboardPage() {
     </div>
   );
 }
-
-    
