@@ -37,7 +37,7 @@ function CustomSidebarTrigger() {
 
 export default function AppLayout({ children }: { children: React.ReactNode }) {
   return (
-    <SidebarProvider defaultOpen={false}>
+    <SidebarProvider defaultOpen={true}>
       <Sidebar collapsible="icon" variant="sidebar" side="left">
         <SidebarHeader className="relative p-4">
           <div className="flex items-center gap-2 group-data-[collapsible=icon]:justify-center">
@@ -66,3 +66,4 @@ export default function AppLayout({ children }: { children: React.ReactNode }) {
     </SidebarProvider>
   );
 }
+
