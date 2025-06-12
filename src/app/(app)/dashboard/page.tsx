@@ -297,7 +297,7 @@ export default function DashboardPage() {
           </CardHeader>
           <CardContent>
             {equipmentsBySectorData.length > 0 ? (
-              <ChartContainer config={equipmentsBySectorChartConfig} className="mx-auto aspect-video max-h-[320px] sm:max-h-[350px]">
+              <ChartContainer config={equipmentsBySectorChartConfig} className="mx-auto w-full h-[360px] sm:h-[400px]">
                 <ResponsiveContainer width="100%" height="100%">
                   <BarChart 
                     data={equipmentsBySectorData} 
@@ -347,7 +347,7 @@ export default function DashboardPage() {
                 </ResponsiveContainer>
               </ChartContainer>
             ) : (
-              <div className="flex flex-col items-center justify-center h-[280px] text-center">
+              <div className="flex flex-col items-center justify-center h-[360px] sm:h-[400px] text-center">
                 <BarChartBig className="h-16 w-16 text-muted-foreground/50 mb-4" />
                 <p className="text-muted-foreground">Nenhum equipamento para exibir.</p>
                 <p className="text-sm text-muted-foreground">Cadastre equipamentos, atribua-os a setores e confira-os.</p>
