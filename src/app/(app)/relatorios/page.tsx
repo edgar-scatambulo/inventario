@@ -56,7 +56,7 @@ export default function RelatoriosPage() {
     let reportSector: Sector | undefined = undefined;
 
     if (type === 'total') {
-      itemsToReport = allEquipment;
+      itemsToReport = [...allEquipment]; // Create a copy to sort
       reportTitle = 'Relatório de Inventário Total';
     } else if (type === 'bySector' && selectedSectorId) {
       const sector = sectors.find(s => s.id === selectedSectorId);
@@ -75,8 +75,24 @@ export default function RelatoriosPage() {
       itemsToReport = allEquipment.filter(eq => !eq.lastCheckedTimestamp);
       reportTitle = 'Relatório de Equipamentos Não Conferidos';
     }
-     setReportData({ type, sector: reportSector, items: itemsToReport, title: reportTitle });
-     setSearchTerm(''); 
+
+    // Sort items: first by sectorName, then by type
+    itemsToReport.sort((a, b) => {
+      // Using a very high Unicode character to push undefined/null values to the end
+      const sectorNameA = a.sectorName || '\uffff'; 
+      const sectorNameB = b.sectorName || '\uffff';
+      const typeA = a.type || '\uffff';
+      const typeB = b.type || '\uffff';
+
+      const sectorCompare = sectorNameA.localeCompare(sectorNameB);
+      if (sectorCompare !== 0) {
+        return sectorCompare;
+      }
+      return typeA.localeCompare(typeB);
+    });
+
+    setReportData({ type, sector: reportSector, items: itemsToReport, title: reportTitle });
+    setSearchTerm(''); 
   };
 
   const filteredReportItems = reportData?.items.filter(item => 
@@ -203,7 +219,7 @@ export default function RelatoriosPage() {
                       <TableHead className="hidden sm:table-cell print:table-cell">Modelo</TableHead>
                       <TableHead className="hidden md:table-cell print:table-cell">Nº de Série</TableHead>
                       <TableHead>Patrimônio</TableHead>
-                      {(reportData.type === 'total' || reportData.type === 'notConferenced') && <TableHead>Setor</TableHead>}
+                      {(reportData.type === 'total' || reportData.type === 'notConferenced' || reportData.type === 'bySector') && <TableHead>Setor</TableHead>}
                       <TableHead className="hidden lg:table-cell print:table-cell">Descrição</TableHead>
                        <TableHead className="hidden sm:table-cell print:table-cell">Última Conferência</TableHead>
                     </TableRow>
@@ -216,7 +232,7 @@ export default function RelatoriosPage() {
                         <TableCell className="hidden sm:table-cell print:table-cell max-w-[150px] truncate">{item.model || 'N/A'}</TableCell>
                         <TableCell className="hidden md:table-cell print:table-cell max-w-[150px] truncate">{item.serialNumber || 'N/A'}</TableCell>
                         <TableCell>{item.barcode}</TableCell>
-                        {(reportData.type === 'total' || reportData.type === 'notConferenced') && <TableCell>{item.sectorName || 'N/A'}</TableCell>}
+                        {(reportData.type === 'total' || reportData.type === 'notConferenced' || reportData.type === 'bySector') && <TableCell>{item.sectorName || 'N/A'}</TableCell>}
                         <TableCell className="hidden lg:table-cell print:table-cell max-w-xs truncate">{item.description || 'N/A'}</TableCell>
                         <TableCell className="hidden sm:table-cell print:table-cell">
                           {item.lastCheckedTimestamp 
@@ -234,6 +250,8 @@ export default function RelatoriosPage() {
                   "Nenhum equipamento não conferido encontrado." :
                 reportData.items.length === 0 && reportData.type === 'bySector' && reportData.sector ? 
                   `Nenhum equipamento encontrado para o setor "${reportData.sector.name}".` : 
+                reportData.items.length === 0 && reportData.title === "Selecione um setor para gerar o relatório." ?
+                   reportData.title :
                 reportData.items.length === 0 ? 
                   "Nenhum equipamento para exibir neste relatório." : 
                   "Nenhum equipamento corresponde à sua busca."}
