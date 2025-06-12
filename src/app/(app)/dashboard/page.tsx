@@ -4,11 +4,11 @@ import * as React from 'react';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import Link from "next/link";
-import { Package, ScanBarcode, FileText, ArrowRight, PieChart as PieChartIcon, AlertTriangle } from "lucide-react";
+import { Package, ScanBarcode, FileText, ArrowRight, PieChart as PieChartIcon, AlertTriangle, BarChartHorizontalBig } from "lucide-react";
 import type { Equipment, Sector } from '@/lib/types';
 import { mockEquipment, mockSectors } from '@/lib/mock-data'; 
 
-import { PieChart, Pie, Cell } from 'recharts'; 
+import { PieChart, Pie, Cell, BarChart, Bar, XAxis, YAxis, CartesianGrid } from 'recharts'; 
 import {
   ChartContainer,
   ChartTooltip,
@@ -29,15 +29,25 @@ const conferenceChartConfig = {
   conferidos: { 
     label: "Conferidos",
     theme: {
-      light: "hsl(220, 70%, 50%)", 
-      dark: "hsl(220, 70%, 65%)",  
+      light: "hsl(220, 70%, 50%)", // Azul
+      dark: "hsl(220, 70%, 65%)",  // Azul mais claro para modo escuro
     },
   },
   naoConferidos: { 
     label: "Não Conferidos",
     theme: {
-      light: "hsl(0, 80%, 60%)",   
-      dark: "hsl(0, 75%, 55%)",    
+      light: "hsl(0, 80%, 60%)",   // Vermelho
+      dark: "hsl(0, 75%, 55%)",    // Vermelho mais claro para modo escuro
+    },
+  },
+} satisfies ChartConfig;
+
+const equipmentsBySectorChartConfig = {
+  count: {
+    label: "Equipamentos",
+    theme: {
+      light: "hsl(var(--chart-1))", // Using a predefined theme color
+      dark: "hsl(var(--chart-1))",
     },
   },
 } satisfies ChartConfig;
@@ -54,11 +64,13 @@ const isTimestampToday = (timestamp?: number): boolean => {
 };
 
 export default function DashboardPage() {
+  const [allEquipments, setAllEquipmentsLocal] = React.useState<Equipment[]>([]);
   const [totalEquipments, setTotalEquipments] = React.useState<number>(0);
   const [totalSectors, setTotalSectors] = React.useState<number>(0);
   const [itemsCheckedTodayCount, setItemsCheckedTodayCount] = React.useState<number>(0);
   const [itemsNotCheckedCount, setItemsNotCheckedCount] = React.useState<number>(0);
   const [conferenceChartData, setConferenceChartData] = React.useState<Array<{ category: keyof typeof conferenceChartConfig; value: number; fill: string }>>([]);
+  const [equipmentsBySectorData, setEquipmentsBySectorData] = React.useState<Array<{ name: string; count: number }>>([]);
 
   React.useEffect(() => {
     let equipments: Equipment[] = [];
@@ -66,16 +78,15 @@ export default function DashboardPage() {
     if (storedEquipments) {
       try {
         equipments = JSON.parse(storedEquipments);
-        setTotalEquipments(equipments.length);
       } catch (e) {
         console.error("Failed to parse equipments from localStorage", e);
         equipments = mockEquipment; 
-        setTotalEquipments(mockEquipment.length);
       }
     } else {
       equipments = mockEquipment; 
-      setTotalEquipments(mockEquipment.length); 
     }
+    setAllEquipmentsLocal(equipments);
+    setTotalEquipments(equipments.length);
 
     let checkedToday = 0;
     let totalConferenced = 0;
@@ -98,6 +109,19 @@ export default function DashboardPage() {
       { category: "conferidos", value: totalConferenced, fill: 'var(--color-conferidos)' },
       { category: "naoConferidos", value: totalNotConferencedInEffect, fill: 'var(--color-naoConferidos)' },
     ]);
+
+    const sectorCounts: { [key: string]: number } = {};
+    equipments.forEach(eq => {
+      const sectorName = eq.sectorName || "Não Atribuído";
+      sectorCounts[sectorName] = (sectorCounts[sectorName] || 0) + 1;
+    });
+
+    const bySectorData = Object.entries(sectorCounts).map(([name, count]) => ({
+      name,
+      count,
+    })).sort((a, b) => b.count - a.count); 
+    setEquipmentsBySectorData(bySectorData);
+
 
     const storedSectors = localStorage.getItem(SECTORS_STORAGE_KEY);
     if (storedSectors) {
@@ -245,15 +269,52 @@ export default function DashboardPage() {
             )}
           </CardContent>
         </Card>
+
+        <Card className="shadow-md lg:col-span-1">
+          <CardHeader>
+            <CardTitle className="flex items-center">
+              <BarChartHorizontalBig className="mr-2 h-6 w-6 text-primary" />
+              Equipamentos por Setor
+            </CardTitle>
+            <CardDescription>Quantitativo de equipamentos em cada setor.</CardDescription>
+          </CardHeader>
+          <CardContent>
+            {equipmentsBySectorData.length > 0 ? (
+              <ChartContainer config={equipmentsBySectorChartConfig} className="mx-auto aspect-square max-h-[280px] sm:max-h-[300px]">
+                <BarChart data={equipmentsBySectorData} layout="vertical" margin={{ top: 5, right: 20, left: 25, bottom: 5 }}>
+                  <CartesianGrid horizontal={false} vertical={true} strokeDasharray="3 3" />
+                  <XAxis type="number" dataKey="count" tickFormatter={(value) => value.toString()} allowDecimals={false} />
+                  <YAxis 
+                    type="category" 
+                    dataKey="name" 
+                    width={80} 
+                    tick={{ fontSize: 10, fill: "hsl(var(--muted-foreground))" }} 
+                    interval={0} 
+                  />
+                  <ChartTooltip
+                    cursor={{ fill: 'hsl(var(--muted))' }}
+                    content={<ChartTooltipContent 
+                                formatter={(value, nameKey, entry) => { // value is count, entry.payload.name is sector name
+                                    return [`${value} itens`, `Setor: ${entry.payload.name}`];
+                                }}
+                                indicator="dot" 
+                             />}
+                  />
+                  <Bar dataKey="count" fill="var(--color-count)" radius={[0, 4, 4, 0]} barSize={20} />
+                </BarChart>
+              </ChartContainer>
+            ) : (
+              <div className="flex flex-col items-center justify-center h-[280px] text-center">
+                <BarChartHorizontalBig className="h-16 w-16 text-muted-foreground/50 mb-4" />
+                <p className="text-muted-foreground">Nenhum equipamento para exibir.</p>
+                <p className="text-sm text-muted-foreground">Cadastre equipamentos e atribua-os a setores.</p>
+              </div>
+            )}
+          </CardContent>
+        </Card>
       </div>
     </div>
   );
 }
 
-
     
-
-    
-
-    
-
