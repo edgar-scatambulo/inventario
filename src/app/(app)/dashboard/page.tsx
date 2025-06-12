@@ -9,13 +9,13 @@ import Image from "next/image";
 import type { Equipment, Sector } from '@/lib/types';
 import { mockEquipment, mockSectors } from '@/lib/mock-data'; 
 
-import { PieChart, Pie, Cell, Tooltip, Legend } from 'recharts';
+import { PieChart, Pie, Cell, Tooltip } from 'recharts'; // Removed Legend
 import {
   ChartContainer,
   ChartTooltip,
   ChartTooltipContent,
-  ChartLegend,
-  ChartLegendContent,
+  // ChartLegend, // Removed
+  // ChartLegendContent, // Removed
   type ChartConfig
 } from "@/components/ui/chart";
 
@@ -199,31 +199,57 @@ export default function DashboardPage() {
               <ChartContainer config={conferenceChartConfig} className="mx-auto aspect-square max-h-[280px] sm:max-h-[300px]">
                 <PieChart>
                   <ChartTooltip
-                    cursor={false}
-                    content={<ChartTooltipContent hideLabel />}
+                    cursor={true} // Enable cursor for better UX on hover
+                    content={<ChartTooltipContent 
+                                formatter={(value, name) => {
+                                  const configEntry = conferenceChartConfig[name as keyof typeof conferenceChartConfig];
+                                  return [`${value}`, configEntry.label];
+                                }}
+                                indicator="dot" 
+                             />}
                   />
                   <Pie
                     data={conferenceChartData}
                     dataKey="value"
                     nameKey="category"
-                    innerRadius={50}
-                    outerRadius={90}
+                    innerRadius={60} // Slightly larger innerRadius for clarity
+                    outerRadius={100} // Slightly larger outerRadius
                     strokeWidth={2}
                     labelLine={false}
-                    label={({ name, value }) => { // Changed from Pct, name, value to just name, value
-                       if (value === 0) return null; // Don't show label for zero value slices
+                    label={({ value, percent, x, y, midAngle, name }) => {
+                       if (value === 0) return null;
+                       // Only display label if the slice is reasonably large
+                       if (percent < 0.08 && conferenceChartData.length > 1) return null; // Don't label very small slices if there are multiple
+                       
+                       // Simple label showing just the value, centered.
+                       // Recharts label positioning can be complex for perfect centering within a slice.
+                       // This is a basic attempt.
+                       const RADIAN = Math.PI / 180;
+                       // Adjust radius for label positioning if needed
+                       const labelRadius = innerRadius + (outerRadius - innerRadius) * 0.5; 
+                       const lx = x + (labelRadius * Math.cos(-midAngle * RADIAN));
+                       const ly = y + (labelRadius * Math.sin(-midAngle * RADIAN));
                        const configEntry = conferenceChartConfig[name as keyof typeof conferenceChartConfig];
-                       return `${configEntry.label}: ${value}`; // Display count instead of percentage
+
+                       return (
+                        <text
+                          x={x} // Use the centroid x provided by recharts
+                          y={y} // Use the centroid y provided by recharts
+                          fill="hsl(var(--card-foreground))" // Use a contrasting color for text
+                          textAnchor="middle" // Center text horizontally
+                          dominantBaseline="central" // Center text vertically
+                          className="text-sm font-semibold"
+                        >
+                          {`${value}`}
+                        </text>
+                      );
                     }}
                   >
                     {conferenceChartData.map((entry) => (
                       <Cell key={`cell-${entry.category}`} fill={entry.fill} className="focus:outline-none focus:ring-2 focus:ring-ring focus:ring-offset-2" />
                     ))}
                   </Pie>
-                  <ChartLegend
-                    content={<ChartLegendContent nameKey="category" />}
-                    className="-translate-y-2"
-                  />
+                  {/* ChartLegend removed as per request */}
                 </PieChart>
               </ChartContainer>
             ) : (
