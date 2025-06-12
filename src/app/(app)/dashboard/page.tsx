@@ -29,15 +29,15 @@ const conferenceChartConfig = {
   conferidos: { 
     label: "Conferidos",
     theme: {
-      light: "hsl(220, 70%, 50%)", // Azul claro
-      dark: "hsl(220, 70%, 65%)",  // Azul mais claro para contraste em tema escuro
+      light: "hsl(220, 70%, 50%)", 
+      dark: "hsl(220, 70%, 65%)",  
     },
   },
   naoConferidos: { 
     label: "Não Conferidos",
     theme: {
-      light: "hsl(0, 80%, 60%)",   // Vermelho claro
-      dark: "hsl(0, 75%, 55%)",    // Vermelho um pouco mais escuro para contraste
+      light: "hsl(0, 80%, 60%)",   
+      dark: "hsl(0, 75%, 55%)",    
     },
   },
 } satisfies ChartConfig;
@@ -69,11 +69,11 @@ export default function DashboardPage() {
         setTotalEquipments(equipments.length);
       } catch (e) {
         console.error("Failed to parse equipments from localStorage", e);
-        equipments = mockEquipment; // Fallback
+        equipments = mockEquipment; 
         setTotalEquipments(mockEquipment.length);
       }
     } else {
-      equipments = mockEquipment; // Fallback
+      equipments = mockEquipment; 
       setTotalEquipments(mockEquipment.length); 
     }
 
@@ -106,10 +106,10 @@ export default function DashboardPage() {
         setTotalSectors(sectors.length);
       } catch (e) {
         console.error("Failed to parse sectors from localStorage", e);
-        setTotalSectors(mockSectors.length); // Fallback
+        setTotalSectors(mockSectors.length); 
       }
     } else {
-      setTotalSectors(mockSectors.length); // Fallback if nothing in localStorage
+      setTotalSectors(mockSectors.length); 
     }
   }, []);
 
@@ -129,7 +129,7 @@ export default function DashboardPage() {
 
       <section>
         <h2 className="mb-6 text-2xl font-semibold text-foreground">Acesso Rápido</h2>
-        <div className="grid grid-cols-1 gap-6 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-3">
+        <div className="grid grid-cols-1 gap-6 md:grid-cols-2 lg:grid-cols-3">
           {quickAccessItems.map((item) => (
             <Card key={item.title} className="transform transition-all hover:scale-105 hover:shadow-xl">
               <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
@@ -181,7 +181,7 @@ export default function DashboardPage() {
           </CardContent>
         </Card>
 
-        <Card className="shadow-md lg:col-span-2">
+        <Card className="shadow-md lg:col-span-1">
           <CardHeader>
             <CardTitle className="flex items-center">
               <PieChartIcon className="mr-2 h-6 w-6 text-primary" />
@@ -256,3 +256,4 @@ export default function DashboardPage() {
     
 
     
+
