@@ -51,7 +51,7 @@ const equipmentTypes = ['Gabinete', 'Impressora', 'Notebook', 'Monitor', 'Switch
 
 const equipmentFormSchema = z.object({
   type: z.string().min(1, { message: 'Selecione um tipo.' }),
-  name: z.string().min(3, { message: 'Marca deve ter pelo menos 3 caracteres.' }),
+  name: z.string().min(2, { message: 'Marca deve ter pelo menos 2 caracteres.' }),
   model: z.string().optional(),
   serialNumber: z.string().optional(),
   description: z.string().optional(),
