@@ -20,7 +20,7 @@ const nextConfig: NextConfig = {
         protocol: 'https',
         hostname: 'storage.googleapis.com',
         port: '',
-        pathname: '/gemini-studio-assets/**',
+        pathname: '/**', // Alterado para ser mais genérico
       }
     ],
   },
