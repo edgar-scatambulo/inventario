@@ -19,7 +19,7 @@ import {
   SidebarMenuSub,
   SidebarMenuSubItem,
   SidebarMenuSubButton,
-} from '@/components/ui/sidebar'; // Assuming sidebar components are in ui
+} from '@/components/ui/sidebar'; 
 import { cn } from '@/lib/utils';
 import { useAuth } from '@/hooks/use-auth';
 
@@ -38,14 +38,14 @@ export function SidebarNav() {
   const { user } = useAuth();
 
   if (!user) {
-    return null; // Don't render sidebar if not logged in (though layout should prevent this)
+    return null; 
   }
 
   return (
     <SidebarMenu>
       {navItems.map((item) => (
         <SidebarMenuItem key={item.label}>
-          <Link href={item.href} passHref legacyBehavior>
+          <Link href={item.href}>
             <SidebarMenuButton
               asChild
               isActive={pathname === item.href || (item.href !== '/dashboard' && pathname.startsWith(item.href))}
@@ -56,12 +56,11 @@ export function SidebarNav() {
                 "group-data-[collapsible=icon]:justify-center"
               )}
             >
-              <a> {/* This 'a' tag is rendered by Link legacyBehavior */}
-                <span>
-                  <item.icon />
-                  <span className="group-data-[collapsible=icon]:hidden">{item.label}</span>
-                </span>
-              </a>
+              {/* A tag <a> foi removida daqui. Link com asChild cuidará disso. */}
+              <span>
+                <item.icon />
+                <span className="group-data-[collapsible=icon]:hidden">{item.label}</span>
+              </span>
             </SidebarMenuButton>
           </Link>
         </SidebarMenuItem>
@@ -69,3 +68,4 @@ export function SidebarNav() {
     </SidebarMenu>
   );
 }
+
