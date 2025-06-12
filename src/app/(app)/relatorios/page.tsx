@@ -2,7 +2,7 @@
 "use client";
 
 import * as React from 'react';
-import { FileText, Download, Filter, Search, Building, ListX } from 'lucide-react';
+import { FileText, Download, Filter, Search, Building, ListX, Printer } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
@@ -104,6 +104,18 @@ export default function RelatoriosPage() {
     });
   };
 
+  const handlePrintClick = () => {
+    if (filteredReportItems.length === 0) {
+       toast({
+        title: "Impressão Indisponível",
+        description: "Não há dados para imprimir neste relatório.",
+        variant: "destructive",
+      });
+      return;
+    }
+    window.print();
+  };
+
   return (
     <div className="space-y-8">
       <Card className="shadow-lg">
@@ -150,13 +162,18 @@ export default function RelatoriosPage() {
       </Card>
 
       {reportData && (
-        <Card className="shadow-md animate-in fade-in">
-          <CardHeader>
+        <Card className="shadow-md animate-in fade-in print:shadow-none print:border-none">
+          <CardHeader className="print:hidden">
             <div className="flex flex-col sm:flex-row justify-between items-center gap-4">
               <CardTitle className="text-xl">{reportData.title || "Relatório de Inventário"}</CardTitle>
-              <Button variant="outline" size="sm" onClick={handleExportClick} disabled={filteredReportItems.length === 0}>
-                <Download className="mr-2 h-4 w-4" /> Exportar CSV
-              </Button>
+              <div className="flex gap-2">
+                <Button variant="outline" size="sm" onClick={handleExportClick} disabled={filteredReportItems.length === 0}>
+                  <Download className="mr-2 h-4 w-4" /> Exportar CSV
+                </Button>
+                 <Button variant="outline" size="sm" onClick={handlePrintClick} disabled={filteredReportItems.length === 0}>
+                  <Printer className="mr-2 h-4 w-4" /> Imprimir
+                </Button>
+              </div>
             </div>
             {reportData.items.length > 0 && ( 
               <div className="mt-4 relative w-full sm:max-w-md">
@@ -174,17 +191,21 @@ export default function RelatoriosPage() {
           <CardContent>
             {filteredReportItems.length > 0 ? (
               <div className="overflow-x-auto">
+                <div className="mb-4 hidden print:block">
+                  <h2 className="text-2xl font-semibold">{reportData.title || "Relatório de Inventário"}</h2>
+                  <p className="text-sm text-muted-foreground">Gerado em: {new Date().toLocaleString()}</p>
+                </div>
                 <Table>
                   <TableHeader>
                     <TableRow>
                       <TableHead>Tipo</TableHead>
                       <TableHead>Marca</TableHead>
-                      <TableHead className="hidden sm:table-cell">Modelo</TableHead>
-                      <TableHead className="hidden md:table-cell">Nº de Série</TableHead>
+                      <TableHead className="hidden sm:table-cell print:table-cell">Modelo</TableHead>
+                      <TableHead className="hidden md:table-cell print:table-cell">Nº de Série</TableHead>
                       <TableHead>Patrimônio</TableHead>
                       {(reportData.type === 'total' || reportData.type === 'notConferenced') && <TableHead>Setor</TableHead>}
-                      <TableHead className="hidden lg:table-cell">Descrição</TableHead>
-                       <TableHead className="hidden sm:table-cell">Última Conferência</TableHead>
+                      <TableHead className="hidden lg:table-cell print:table-cell">Descrição</TableHead>
+                       <TableHead className="hidden sm:table-cell print:table-cell">Última Conferência</TableHead>
                     </TableRow>
                   </TableHeader>
                   <TableBody>
@@ -192,12 +213,12 @@ export default function RelatoriosPage() {
                       <TableRow key={item.id}>
                         <TableCell>{item.type || 'N/A'}</TableCell>
                         <TableCell className="font-medium">{item.name}</TableCell>
-                        <TableCell className="hidden sm:table-cell max-w-[150px] truncate">{item.model || 'N/A'}</TableCell>
-                        <TableCell className="hidden md:table-cell max-w-[150px] truncate">{item.serialNumber || 'N/A'}</TableCell>
+                        <TableCell className="hidden sm:table-cell print:table-cell max-w-[150px] truncate">{item.model || 'N/A'}</TableCell>
+                        <TableCell className="hidden md:table-cell print:table-cell max-w-[150px] truncate">{item.serialNumber || 'N/A'}</TableCell>
                         <TableCell>{item.barcode}</TableCell>
                         {(reportData.type === 'total' || reportData.type === 'notConferenced') && <TableCell>{item.sectorName || 'N/A'}</TableCell>}
-                        <TableCell className="hidden lg:table-cell max-w-xs truncate">{item.description || 'N/A'}</TableCell>
-                        <TableCell className="hidden sm:table-cell">
+                        <TableCell className="hidden lg:table-cell print:table-cell max-w-xs truncate">{item.description || 'N/A'}</TableCell>
+                        <TableCell className="hidden sm:table-cell print:table-cell">
                           {item.lastCheckedTimestamp 
                             ? new Date(item.lastCheckedTimestamp).toLocaleString() 
                             : <span className="text-muted-foreground italic">Não conferido</span>}
@@ -223,7 +244,7 @@ export default function RelatoriosPage() {
       )}
 
       {!reportData && (
-         <div className="text-center py-12">
+         <div className="text-center py-12 print:hidden">
             <FileText className="mx-auto h-20 w-20 text-muted-foreground/50 mb-4" />
             <p className="text-lg text-muted-foreground">Selecione um tipo de relatório para começar.</p>
             <p className="text-sm text-muted-foreground">Você pode gerar um relatório do inventário total, por setor ou listar os não conferidos.</p>

@@ -118,3 +118,31 @@
     -moz-osx-font-smoothing: grayscale;
   }
 }
+
+@layer utilities {
+  .print\\:hidden {
+    @media print {
+      display: none !important;
+    }
+  }
+  .print\\:block {
+    @media print {
+      display: block !important;
+    }
+  }
+  .print\\:table-cell {
+    @media print {
+      display: table-cell !important;
+    }
+  }
+  .print\\:shadow-none {
+    @media print {
+      box-shadow: none !important;
+    }
+  }
+  .print\\:border-none {
+     @media print {
+      border: none !important;
+    }
+  }
+}
