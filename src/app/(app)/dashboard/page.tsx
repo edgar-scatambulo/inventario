@@ -17,8 +17,8 @@ import {
 } from "@/components/ui/chart";
 
 const quickAccessItems = [
-  { title: "Cadastrar Equipamento", href: "/equipamentos", icon: Package, description: "Adicione novos itens ao inventário." },
-  { title: "Conferir Inventário", href: "/conferencia", icon: ScanBarcode, description: "Realize a checagem rápida de itens." },
+  { title: "Cadastrar Equipamento", href: "/equipamentos", icon: Package, description: "Adicione novos itens." },
+  { title: "Conferir Inventário", href: "/conferencia", icon: ScanBarcode, description: "Realizar conferência." },
   { title: "Ver Relatórios", href: "/relatorios", icon: FileText, description: "Visualizar relatório completo." },
 ];
 
@@ -360,3 +360,5 @@ export default function DashboardPage() {
   );
 }
 
+
+    
