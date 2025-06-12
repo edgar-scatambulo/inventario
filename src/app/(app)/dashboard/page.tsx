@@ -4,7 +4,7 @@ import * as React from 'react';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import Link from "next/link";
-import { Package, Warehouse, ScanBarcode, FileText, ArrowRight, PieChart as PieChartIcon, AlertTriangle } from "lucide-react";
+import { Package, ScanBarcode, FileText, ArrowRight, PieChart as PieChartIcon, AlertTriangle } from "lucide-react";
 import Image from "next/image";
 import type { Equipment, Sector } from '@/lib/types';
 import { mockEquipment, mockSectors } from '@/lib/mock-data'; 
@@ -125,12 +125,13 @@ export default function DashboardPage() {
         </CardHeader>
         <CardContent>
           <Image
-            src="https://placehold.co/1200x400.png"
-            alt="Painel de inventário com gráficos e listas"
+            src="https://storage.googleapis.com/gemini-studio-assets/image_13460a36e6b541f6.jpeg"
+            alt="Pessoa conferindo inventário com prancheta e caixas ao fundo"
             width={1200}
             height={400}
             className="w-full rounded-lg object-cover"
-            data-ai-hint="inventory dashboard charts"
+            data-ai-hint="inventory checklist"
+            priority
           />
         </CardContent>
       </Card>
@@ -258,6 +259,8 @@ export default function DashboardPage() {
   );
 }
 
+
+    
 
     
 
