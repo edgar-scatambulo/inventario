@@ -422,7 +422,7 @@ export default function EquipamentosPage() {
           </Button>
            <AlertDialog open={isMarkUncheckedDialogOpen} onOpenChange={setIsMarkUncheckedDialogOpen}>
             <AlertDialogTrigger asChild>
-              <Button variant="outline" className="w-full sm:w-auto" onClick={() => { setSectorToMarkUnchecked(undefined); setIsMarkUncheckedDialogOpen(true); }}>
+              <Button variant="destructive" className="w-full sm:w-auto" onClick={() => { setSectorToMarkUnchecked(undefined); setIsMarkUncheckedDialogOpen(true); }}>
                 <ClipboardX className="mr-2 h-4 w-4" /> Limpar Conferências
               </Button>
             </AlertDialogTrigger>
@@ -537,8 +537,3 @@ export default function EquipamentosPage() {
     </Card>
   );
 }
-
-
-    
-
-    
