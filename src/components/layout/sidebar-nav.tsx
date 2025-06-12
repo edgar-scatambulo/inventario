@@ -19,7 +19,7 @@ import {
   SidebarMenuSub,
   SidebarMenuSubItem,
   SidebarMenuSubButton,
-} from '@/components/ui/sidebar'; 
+} from '@/components/ui/sidebar';
 import { cn } from '@/lib/utils';
 import { useAuth } from '@/hooks/use-auth';
 
@@ -38,7 +38,7 @@ export function SidebarNav() {
   const { user } = useAuth();
 
   if (!user) {
-    return null; 
+    return null;
   }
 
   return (
@@ -58,8 +58,8 @@ export function SidebarNav() {
             >
               {/* A tag <a> foi removida daqui. Link com asChild cuidará disso. */}
               <span>
-                <item.icon />
                 <span className="group-data-[collapsible=icon]:hidden">{item.label}</span>
+                <item.icon />
               </span>
             </SidebarMenuButton>
           </Link>
@@ -68,4 +68,3 @@ export function SidebarNav() {
     </SidebarMenu>
   );
 }
-
