@@ -181,7 +181,7 @@ export default function RelatoriosPage() {
                       <TableHead>Marca</TableHead>
                       <TableHead className="hidden sm:table-cell">Modelo</TableHead>
                       <TableHead className="hidden md:table-cell">Nº de Série</TableHead>
-                      <TableHead>Cód. Barras</TableHead>
+                      <TableHead>Patrimônio</TableHead>
                       {(reportData.type === 'total' || reportData.type === 'notConferenced') && <TableHead>Setor</TableHead>}
                       <TableHead className="hidden lg:table-cell">Descrição</TableHead>
                        <TableHead className="hidden sm:table-cell">Última Conferência</TableHead>
@@ -238,3 +238,4 @@ declare module 'react' {
     title?: string;
   }
 }
+
