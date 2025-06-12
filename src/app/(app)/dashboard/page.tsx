@@ -19,7 +19,6 @@ import {
 
 const quickAccessItems = [
   { title: "Cadastrar Equipamento", href: "/equipamentos", icon: Package, description: "Adicione novos itens ao inventário." },
-  { title: "Gerenciar Setores", href: "/setores", icon: Warehouse, description: "Equipamentos por setor." },
   { title: "Conferir Inventário", href: "/conferencia", icon: ScanBarcode, description: "Realize a checagem rápida de itens." },
   { title: "Ver Relatórios", href: "/relatorios", icon: FileText, description: "Visualizar relatório completo." },
 ];
@@ -28,18 +27,18 @@ const EQUIPMENTS_STORAGE_KEY = 'localStorage_equipments';
 const SECTORS_STORAGE_KEY = 'localStorage_sectors';
 
 const conferenceChartConfig = {
-  conferidos: { // Azul
+  conferidos: { 
     label: "Conferidos",
     theme: {
-      light: "hsl(220, 70%, 50%)", 
-      dark: "hsl(220, 70%, 65%)",  
+      light: "hsl(220, 70%, 50%)", // Azul claro
+      dark: "hsl(220, 70%, 65%)",  // Azul mais claro para contraste em tema escuro
     },
   },
-  naoConferidos: { // Vermelho
+  naoConferidos: { 
     label: "Não Conferidos",
     theme: {
-      light: "hsl(0, 80%, 60%)",   
-      dark: "hsl(0, 75%, 55%)",    
+      light: "hsl(0, 80%, 60%)",   // Vermelho claro
+      dark: "hsl(0, 75%, 55%)",    // Vermelho um pouco mais escuro para contraste
     },
   },
 } satisfies ChartConfig;
@@ -138,7 +137,7 @@ export default function DashboardPage() {
 
       <section>
         <h2 className="mb-6 text-2xl font-semibold text-foreground">Acesso Rápido</h2>
-        <div className="grid grid-cols-1 gap-6 md:grid-cols-2 lg:grid-cols-4">
+        <div className="grid grid-cols-1 gap-6 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-3"> {/* Adjusted for 3 items */}
           {quickAccessItems.map((item) => (
             <Card key={item.title} className="transform transition-all hover:scale-105 hover:shadow-xl">
               <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
@@ -206,9 +205,8 @@ export default function DashboardPage() {
                     cursor={true} 
                     content={<ChartTooltipContent 
                                 formatter={(value, name) => {
-                                  // Here 'name' will be 'conferidos' or 'naoConferidos'
                                   const configEntry = conferenceChartConfig[name as keyof typeof conferenceChartConfig];
-                                  return [`${value}`, configEntry.label]; // Display value and its configured label
+                                  return [`${value}`, configEntry.label]; 
                                 }}
                                 indicator="dot" 
                              />}
@@ -216,14 +214,13 @@ export default function DashboardPage() {
                   <Pie
                     data={conferenceChartData}
                     dataKey="value"
-                    nameKey="category" // This refers to 'conferidos' or 'naoConferidos' from data
+                    nameKey="category" 
                     innerRadius={60} 
                     outerRadius={100} 
                     strokeWidth={2}
                     labelLine={false}
-                    label={({ value, percent, x, y, midAngle, name, cx, cy, innerRadius, outerRadius }) => {
-                       if (value === 0) return null; // Don't render label if value is 0
-                       // Simple threshold to hide label if slice is too small, but only if there's more than one slice with data
+                    label={({ value, percent, x, y, midAngle, name, cx, cy, innerRadius: pieInnerRadius, outerRadius: pieOuterRadius }) => {
+                       if (value === 0) return null; 
                        const nonZeroSlices = conferenceChartData.filter(d => d.value > 0).length;
                        if (percent < 0.08 && nonZeroSlices > 1) return null; 
                        
@@ -261,5 +258,7 @@ export default function DashboardPage() {
   );
 }
 
+
+    
 
     
