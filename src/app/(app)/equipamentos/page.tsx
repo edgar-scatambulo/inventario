@@ -406,7 +406,7 @@ export default function EquipamentosPage() {
             />
           </div>
           <Select value={filterSector || "all"} onValueChange={(value) => setFilterSector(value === "all" ? undefined : value)}>
-            <SelectTrigger className="w-full sm:w-auto min-w-[180px]">
+            <SelectTrigger className="w-full sm:flex-1 sm:min-w-0">
                <Filter className="mr-2 h-4 w-4 text-muted-foreground" />
               <SelectValue placeholder="Filtrar por setor" />
             </SelectTrigger>
@@ -417,12 +417,12 @@ export default function EquipamentosPage() {
               ))}
             </SelectContent>
           </Select>
-          <Button variant="outline" onClick={handleExportClick} className="w-full sm:w-auto">
+          <Button variant="outline" onClick={handleExportClick} className="w-full sm:flex-1">
             <FileDown className="mr-2 h-4 w-4" /> Exportar
           </Button>
            <AlertDialog open={isMarkUncheckedDialogOpen} onOpenChange={setIsMarkUncheckedDialogOpen}>
             <AlertDialogTrigger asChild>
-              <Button variant="destructive" className="w-full sm:w-auto" onClick={() => { setSectorToMarkUnchecked(undefined); setIsMarkUncheckedDialogOpen(true); }}>
+              <Button variant="destructive" className="w-full sm:flex-1" onClick={() => { setSectorToMarkUnchecked(undefined); setIsMarkUncheckedDialogOpen(true); }}>
                 <ClipboardX className="mr-2 h-4 w-4" /> Limpar Conferências
               </Button>
             </AlertDialogTrigger>
@@ -537,3 +537,4 @@ export default function EquipamentosPage() {
     </Card>
   );
 }
+
