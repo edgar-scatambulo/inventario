@@ -198,12 +198,12 @@ export default function DashboardPage() {
           </CardHeader>
           <CardContent className="space-y-4">
             <div className="flex justify-between items-center p-3 bg-secondary/30 rounded-md">
-              <span className="font-medium">Total de Equipamentos:</span>
-              <span className="text-xl font-bold text-primary">{totalEquipments}</span>
+              <span className="font-medium text-foreground">Total de Equipamentos:</span>
+              <span className="text-xl font-bold text-foreground">{totalEquipments}</span>
             </div>
             <div className="flex justify-between items-center p-3 bg-secondary/30 rounded-md">
-              <span className="font-medium">Total de Setores:</span>
-              <span className="text-xl font-bold text-primary">{totalSectors}</span>
+              <span className="font-medium text-foreground">Total de Setores:</span>
+              <span className="text-xl font-bold text-foreground">{totalSectors}</span>
             </div>
              <div className="flex justify-between items-center p-3 bg-accent/10 rounded-md border border-accent">
               <span className="font-medium text-accent-foreground">Itens Conferidos Hoje:</span>
