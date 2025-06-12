@@ -93,13 +93,13 @@ const SidebarProvider = React.forwardRef<
           document.cookie = `${SIDEBAR_COOKIE_NAME}=${openState}; path=/; max-age=${SIDEBAR_COOKIE_MAX_AGE}`
         }
       },
-      [setOpenProp, open]
+      [setOpenProp, open, _setOpen] // Added _setOpen to dependencies
     )
 
     const toggleSidebar = React.useCallback(() => {
       return isMobile
-        ? setOpenMobile((open) => !open)
-        : setOpen((open) => !open)
+        ? setOpenMobile((currentOpen) => !currentOpen) // Use functional update
+        : setOpen((currentOpen) => !currentOpen) // Use functional update
     }, [isMobile, setOpen, setOpenMobile])
 
     React.useEffect(() => {
@@ -533,82 +533,63 @@ const sidebarMenuButtonVariants = cva(
   }
 )
 
-type SidebarMenuButtonOwnProps = {
-  asChild?: boolean;
-  isActive?: boolean;
-  tooltip?: string | React.ComponentProps<typeof TooltipContent>;
-} & VariantProps<typeof sidebarMenuButtonVariants>;
-
-
 const SidebarMenuButton = React.forwardRef<
   HTMLButtonElement,
-  SidebarMenuButtonOwnProps & Omit<React.ComponentPropsWithoutRef<'button'>, keyof SidebarMenuButtonOwnProps> & { [key: string]: any }
->(
-  (allProps, ref) => {
-    const { isMobile, state: sidebarState } = useSidebar();
-
-    // Destructure SBM's specific behavioral props and its own `asChild` intention
-    // `ownAsChildIntent` will be true if `asChild` is explicitly on <SidebarMenuButton> OR if it's passed from a parent like <Link asChild>
-    const {
-      asChild: ownAsChildIntent = false, 
-      isActive = false,
-      variant = "default",
-      size = "default",
-      tooltip,
-      className,
-      children: buttonContentFromProps,
-      // `remainingProps` will capture `href` from Link, and potentially an `asChild` from Link if Link itself has `asChild`
-      // It's crucial that `asChild` used for `ownAsChildIntent` is correctly separated here.
-      ...remainingProps 
-    } = allProps;
-
-    // Filter out `asChild` from `remainingProps` so it's not spread onto the underlying element if it came from parent
-    // This ensures that if `asChild` was already consumed for `ownAsChildIntent`, any duplicate `asChild` (e.g. from Link) is removed
-    const { asChild: _parentAsChild, ...parentPropsToForward } = remainingProps;
-
-    // Determine the actual component to render
-    // If a tooltip is active, TooltipTrigger uses `asChild`, so SBM must render a concrete element ('button').
-    // Otherwise, SBM respects its `ownAsChildIntent`.
-    const renderAsSlot = tooltip ? false : ownAsChildIntent;
-    const Comp = renderAsSlot ? Slot : "button";
-
-    const buttonElement = (
-      <Comp
-        ref={ref}
-        data-sidebar="menu-button"
-        data-size={size}
-        data-active={isActive}
-        className={cn(sidebarMenuButtonVariants({ variant, size, className }))}
-        {...parentPropsToForward} // Spread cleaned props from parent (e.g., href)
-      >
-        {buttonContentFromProps}
-      </Comp>
-    );
-
-    if (!tooltip) {
-      return buttonElement; // Render directly if no tooltip
-    }
-
-    // If tooltip is present, wrap with Tooltip and TooltipTrigger
-    const tooltipContentProps = typeof tooltip === "string" ? { children: tooltip } : tooltip;
-    return (
-      <Tooltip>
-        <TooltipTrigger asChild> 
-          {/* TooltipTrigger's `asChild` will correctly wrap `buttonElement`.
-              Since `buttonElement` is now guaranteed to be a <button> (not <Slot>)
-              when `tooltip` is true, there's no Slot-within-Slot issue here. */}
-          {buttonElement}
-        </TooltipTrigger>
-        <TooltipContent
-          side="right"
-          align="center"
-          hidden={sidebarState !== "collapsed" || isMobile}
-          {...tooltipContentProps}
-        />
-      </Tooltip>
-    );
+  React.ComponentPropsWithoutRef<"button"> &
+  VariantProps<typeof sidebarMenuButtonVariants> & {
+    asChild?: boolean;
+    isActive?: boolean;
+    tooltip?: string | React.ComponentProps<typeof TooltipContent>;
   }
-);
+>(({
+  asChild: localAsChild, 
+  isActive,
+  variant,
+  size,
+  tooltip,
+  className,
+  children,
+  ...restOfAllProps 
+}, ref) => {
+  const { isMobile, state: sidebarState } = useSidebar();
+
+  const { asChild: parentAsChild, ...forwardableProps } = restOfAllProps;
+
+  const compShouldBeSlot = tooltip ? false : localAsChild;
+  const Comp = compShouldBeSlot ? Slot : "button";
+
+  const buttonElement = (
+    <Comp
+      ref={ref}
+      data-sidebar="menu-button"
+      data-size={size}
+      data-active={isActive}
+      className={cn(sidebarMenuButtonVariants({ variant, size, className }))}
+      {...forwardableProps} 
+    >
+      {children}
+    </Comp>
+  );
+
+  if (!tooltip) {
+    return buttonElement;
+  }
+
+  const tooltipContentProps = typeof tooltip === "string" ? { children: tooltip } : tooltip;
+  return (
+    <Tooltip>
+      <TooltipTrigger asChild>
+        {buttonElement}
+      </TooltipTrigger>
+      <TooltipContent
+        side="right"
+        align="center"
+        hidden={sidebarState !== "collapsed" || isMobile}
+        {...tooltipContentProps}
+      />
+    </Tooltip>
+  );
+});
 SidebarMenuButton.displayName = "SidebarMenuButton"
 
 
