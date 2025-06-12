@@ -1,3 +1,4 @@
+
 "use client";
 import * as React from 'react';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
@@ -7,13 +8,11 @@ import { Package, ScanBarcode, FileText, ArrowRight, PieChart as PieChartIcon, A
 import type { Equipment, Sector } from '@/lib/types';
 import { mockEquipment, mockSectors } from '@/lib/mock-data'; 
 
-import { PieChart, Pie, Cell, BarChart, Bar, XAxis, YAxis, CartesianGrid, ResponsiveContainer, Legend } from 'recharts'; 
+import { PieChart, Pie, Cell, BarChart, Bar, XAxis, YAxis, CartesianGrid, ResponsiveContainer } from 'recharts'; 
 import {
   ChartContainer,
   ChartTooltip,
   ChartTooltipContent,
-  ChartLegend,
-  ChartLegendContent,
   type ChartConfig
 } from "@/components/ui/chart";
 
@@ -256,7 +255,6 @@ export default function DashboardPage() {
                     label={({ value, percent, x, y, midAngle, name, cx, cy, innerRadius: pieInnerRadius, outerRadius: pieOuterRadius }) => {
                        if (value === 0) return null; 
                        const nonZeroSlices = conferenceChartData.filter(d => d.value > 0).length;
-                       // Hide label if slice is too small (e.g. < 8%) AND there's more than one slice with value
                        if (percent < 0.08 && nonZeroSlices > 1) return null; 
                        
                        return (
@@ -343,10 +341,6 @@ export default function DashboardPage() {
                         return null;
                       }}
                     />
-                    <ChartLegend 
-                      content={<ChartLegendContent nameKey="name" />} 
-                      wrapperStyle={{ paddingTop: '10px' }}
-                    />
                     <Bar dataKey="conferidos" stackId="a" fill="var(--color-conferidos)" radius={[4, 4, 0, 0]} barSize={equipmentsBySectorData.length > 8 ? 20 : 30} />
                     <Bar dataKey="naoConferidos" stackId="a" fill="var(--color-naoConferidos)" radius={[4, 4, 0, 0]} barSize={equipmentsBySectorData.length > 8 ? 20 : 30} />
                   </BarChart>
@@ -365,3 +359,4 @@ export default function DashboardPage() {
     </div>
   );
 }
+
