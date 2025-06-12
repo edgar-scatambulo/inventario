@@ -9,13 +9,11 @@ import Image from "next/image";
 import type { Equipment, Sector } from '@/lib/types';
 import { mockEquipment, mockSectors } from '@/lib/mock-data'; 
 
-import { PieChart, Pie, Cell, Tooltip } from 'recharts'; // Removed Legend
+import { PieChart, Pie, Cell, Tooltip } from 'recharts'; 
 import {
   ChartContainer,
   ChartTooltip,
   ChartTooltipContent,
-  // ChartLegend, // Removed
-  // ChartLegendContent, // Removed
   type ChartConfig
 } from "@/components/ui/chart";
 
@@ -199,7 +197,7 @@ export default function DashboardPage() {
               <ChartContainer config={conferenceChartConfig} className="mx-auto aspect-square max-h-[280px] sm:max-h-[300px]">
                 <PieChart>
                   <ChartTooltip
-                    cursor={true} // Enable cursor for better UX on hover
+                    cursor={true} 
                     content={<ChartTooltipContent 
                                 formatter={(value, name) => {
                                   const configEntry = conferenceChartConfig[name as keyof typeof conferenceChartConfig];
@@ -212,32 +210,21 @@ export default function DashboardPage() {
                     data={conferenceChartData}
                     dataKey="value"
                     nameKey="category"
-                    innerRadius={60} // Slightly larger innerRadius for clarity
-                    outerRadius={100} // Slightly larger outerRadius
+                    innerRadius={60} 
+                    outerRadius={100} 
                     strokeWidth={2}
                     labelLine={false}
-                    label={({ value, percent, x, y, midAngle, name }) => {
+                    label={({ value, percent, x, y, midAngle, name, innerRadius, outerRadius }) => {
                        if (value === 0) return null;
-                       // Only display label if the slice is reasonably large
-                       if (percent < 0.08 && conferenceChartData.length > 1) return null; // Don't label very small slices if there are multiple
+                       if (percent < 0.08 && conferenceChartData.length > 1) return null; 
                        
-                       // Simple label showing just the value, centered.
-                       // Recharts label positioning can be complex for perfect centering within a slice.
-                       // This is a basic attempt.
-                       const RADIAN = Math.PI / 180;
-                       // Adjust radius for label positioning if needed
-                       const labelRadius = innerRadius + (outerRadius - innerRadius) * 0.5; 
-                       const lx = x + (labelRadius * Math.cos(-midAngle * RADIAN));
-                       const ly = y + (labelRadius * Math.sin(-midAngle * RADIAN));
-                       const configEntry = conferenceChartConfig[name as keyof typeof conferenceChartConfig];
-
                        return (
                         <text
-                          x={x} // Use the centroid x provided by recharts
-                          y={y} // Use the centroid y provided by recharts
-                          fill="hsl(var(--card-foreground))" // Use a contrasting color for text
-                          textAnchor="middle" // Center text horizontally
-                          dominantBaseline="central" // Center text vertically
+                          x={x} 
+                          y={y} 
+                          fill="hsl(var(--card-foreground))" 
+                          textAnchor="middle" 
+                          dominantBaseline="central"
                           className="text-sm font-semibold"
                         >
                           {`${value}`}
@@ -249,7 +236,6 @@ export default function DashboardPage() {
                       <Cell key={`cell-${entry.category}`} fill={entry.fill} className="focus:outline-none focus:ring-2 focus:ring-ring focus:ring-offset-2" />
                     ))}
                   </Pie>
-                  {/* ChartLegend removed as per request */}
                 </PieChart>
               </ChartContainer>
             ) : (
@@ -265,4 +251,3 @@ export default function DashboardPage() {
     </div>
   );
 }
-
