@@ -210,11 +210,10 @@ export default function DashboardPage() {
                     outerRadius={90}
                     strokeWidth={2}
                     labelLine={false}
-                    label={({ Pct, name, value }) => {
+                    label={({ name, value }) => { // Changed from Pct, name, value to just name, value
                        if (value === 0) return null; // Don't show label for zero value slices
-                       const percentage = (Pct * 100).toFixed(0) + '%';
                        const configEntry = conferenceChartConfig[name as keyof typeof conferenceChartConfig];
-                       return `${configEntry.label}: ${percentage}`; 
+                       return `${configEntry.label}: ${value}`; // Display count instead of percentage
                     }}
                   >
                     {conferenceChartData.map((entry) => (
