@@ -2,7 +2,7 @@
 "use client";
 
 import * as React from 'react';
-import { PlusCircle, Edit, Trash2, Search, Filter, FileDown, ClipboardX } from 'lucide-react';
+import { PlusCircle, Edit, Trash2, Search, Filter, FileDown, ClipboardX, FileUp } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import {
   Table,
@@ -77,7 +77,7 @@ export default function EquipamentosPage() {
 
   const [isMarkUncheckedDialogOpen, setIsMarkUncheckedDialogOpen] = React.useState(false);
   const [sectorToMarkUnchecked, setSectorToMarkUnchecked] = React.useState<string | undefined>(undefined);
-
+  const fileInputRef = React.useRef<HTMLInputElement>(null);
 
   const form = useForm<EquipmentFormValues>({
     resolver: zodResolver(equipmentFormSchema),
@@ -119,7 +119,7 @@ export default function EquipamentosPage() {
         serialNumber: editingEquipment.serialNumber || '',
         description: editingEquipment.description || '',
         barcode: editingEquipment.barcode,
-        sectorId: editingEquipment.sectorId || NO_SECTOR_VALUE, 
+        sectorId: editingEquipment.sectorId || NO_SECTOR_VALUE,
       });
     } else {
       form.reset({ type: '', name: '', model: '', serialNumber: '', description: '', barcode: '', sectorId: NO_SECTOR_VALUE });
@@ -136,17 +136,17 @@ export default function EquipamentosPage() {
 
     if (editingEquipment) {
       updatedEquipments = equipments.map(eq =>
-        eq.id === editingEquipment.id 
-        ? { ...editingEquipment, 
+        eq.id === editingEquipment.id
+        ? { ...editingEquipment,
             type: data.type,
             name: data.name,
             model: data.model,
             serialNumber: data.serialNumber,
-            description: data.description, 
-            barcode: data.barcode, 
-            sectorId: finalSectorId, 
-            sectorName 
-          } 
+            description: data.description,
+            barcode: data.barcode,
+            sectorId: finalSectorId,
+            sectorName
+          }
         : eq
       );
       toast({ title: 'Sucesso!', description: 'Equipamento atualizado.' });
@@ -182,7 +182,7 @@ export default function EquipamentosPage() {
     setEditingEquipment(equipment);
     setIsFormDialogOpen(true);
   };
-  
+
   const filteredEquipments = equipments.filter(eq => {
     const matchesSearch = (eq.type && eq.type.toLowerCase().includes(searchTerm.toLowerCase())) ||
                           eq.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
@@ -193,8 +193,7 @@ export default function EquipamentosPage() {
     const matchesSector = (filterSector && filterSector !== 'all') ? eq.sectorId === filterSector : true;
     return matchesSearch && matchesSector;
   }).sort((a, b) => {
-    // Usando um caractere Unicode alto para empurrar valores indefinidos/nulos para o final
-      const sectorNameA = a.sectorName || '\uffff'; 
+      const sectorNameA = a.sectorName || '\uffff';
       const sectorNameB = b.sectorName || '\uffff';
       const typeA = a.type || '\uffff';
       const typeB = b.type || '\uffff';
@@ -210,7 +209,7 @@ export default function EquipamentosPage() {
     toast({
       title: "Exportação Indisponível",
       description: "A funcionalidade de exportar dados ainda está em desenvolvimento.",
-      variant: "default", 
+      variant: "default",
     });
   };
 
@@ -240,171 +239,298 @@ export default function EquipamentosPage() {
 
     setEquipments(updatedEquipments);
     localStorage.setItem(EQUIPMENTS_STORAGE_KEY, JSON.stringify(updatedEquipments));
-    
-    const sectorName = sectorToMarkUnchecked === ALL_SECTORS_VALUE 
-      ? "todos os setores" 
+
+    const sectorName = sectorToMarkUnchecked === ALL_SECTORS_VALUE
+      ? "todos os setores"
       : sectors.find(s => s.id === sectorToMarkUnchecked)?.name || "setor selecionado";
-    
+
     toast({
       title: 'Sucesso!',
       description: `Equipamentos de ${sectorName} marcados como não conferidos.`
     });
     setIsMarkUncheckedDialogOpen(false);
-    setSectorToMarkUnchecked(undefined); 
+    setSectorToMarkUnchecked(undefined);
+  };
+
+  const handleImportCSV = (event: React.ChangeEvent<HTMLInputElement>) => {
+    const file = event.target.files?.[0];
+    if (!file) {
+      return;
+    }
+
+    const reader = new FileReader();
+    reader.onload = (e) => {
+      const text = e.target?.result as string;
+      if (!text) {
+        toast({ variant: "destructive", title: "Erro ao ler arquivo", description: "Não foi possível ler o conteúdo do arquivo CSV." });
+        return;
+      }
+
+      const lines = text.split(/\r\n|\n/).filter(line => line.trim() !== ''); // Ignora linhas vazias
+      if (lines.length <= 1) {
+        toast({ variant: "destructive", title: "Arquivo CSV Vazio ou Inválido", description: "O arquivo CSV não contém dados ou possui apenas o cabeçalho." });
+        return;
+      }
+
+      const header = lines[0].split(',').map(h => h.trim());
+      const expectedHeader = ['type', 'name', 'model', 'serialNumber', 'description', 'barcode', 'sectorName'];
+      
+      // Basic header validation
+      if (header.length !== expectedHeader.length || !expectedHeader.every((h, i) => h === header[i])) {
+         toast({
+          variant: "destructive",
+          title: "Cabeçalho CSV Inválido",
+          description: `O cabeçalho esperado é: ${expectedHeader.join(',')}. O fornecido foi: ${header.join(',')}`,
+        });
+        return;
+      }
+
+
+      const dataLines = lines.slice(1);
+      const newEquipments: Equipment[] = [];
+      const errors: string[] = [];
+
+      dataLines.forEach((line, index) => {
+        const values = line.split(',');
+        const rowData: any = {};
+        header.forEach((col, i) => {
+          rowData[col] = values[i]?.trim() || '';
+        });
+
+        const sectorName = rowData.sectorName;
+        let sectorId: string | undefined = undefined;
+        if (sectorName) {
+          const foundSector = sectors.find(s => s.name.toLowerCase() === sectorName.toLowerCase());
+          if (foundSector) {
+            sectorId = foundSector.id;
+          } else {
+            // Optionally, create new sector or warn. For now, just warn if sector not found.
+             errors.push(`Linha ${index + 2}: Setor '${sectorName}' não encontrado. Equipamento será adicionado sem setor.`);
+          }
+        }
+
+        const parsedData = {
+          type: rowData.type,
+          name: rowData.name,
+          model: rowData.model || undefined,
+          serialNumber: rowData.serialNumber || undefined,
+          description: rowData.description || undefined,
+          barcode: rowData.barcode,
+          sectorId: sectorId,
+        };
+        
+        const validationResult = equipmentFormSchema.safeParse(parsedData);
+
+        if (validationResult.success) {
+          newEquipments.push({
+            id: `equip-${Date.now()}-${index}`,
+            ...validationResult.data,
+            sectorName: sectorId ? sectors.find(s => s.id === sectorId)?.name : undefined,
+          });
+        } else {
+          const errorMessages = validationResult.error.errors.map(err => `${err.path.join('.')}: ${err.message}`).join(', ');
+          errors.push(`Linha ${index + 2}: ${errorMessages}`);
+        }
+      });
+
+      if (newEquipments.length > 0) {
+        const updatedEquipments = [...newEquipments, ...equipments];
+        setEquipments(updatedEquipments);
+        localStorage.setItem(EQUIPMENTS_STORAGE_KEY, JSON.stringify(updatedEquipments));
+        toast({ title: 'Importação Concluída!', description: `${newEquipments.length} equipamentos importados com sucesso.` });
+      } else if (errors.length === dataLines.length) {
+         toast({ variant: "destructive", title: 'Importação Falhou', description: 'Nenhum equipamento válido encontrado no arquivo CSV.' });
+      }
+
+
+      if (errors.length > 0) {
+        // Limit the number of errors shown in toast to avoid overwhelming the UI
+        const displayedErrors = errors.slice(0, 3);
+        const additionalErrorCount = errors.length - displayedErrors.length;
+        let errorDescription = displayedErrors.join('\n');
+        if (additionalErrorCount > 0) {
+          errorDescription += `\nE mais ${additionalErrorCount} outros erros.`;
+        }
+         toast({
+          variant: "destructive",
+          title: "Erros na Importação de CSV",
+          description: <pre className="whitespace-pre-wrap text-xs">{errorDescription}</pre>,
+          duration: 10000, 
+        });
+      }
+      
+      // Reset file input
+      if (fileInputRef.current) {
+        fileInputRef.current.value = "";
+      }
+    };
+    reader.readAsText(file);
   };
 
 
   return (
     <Card className="shadow-lg">
       <CardHeader>
-        <div className="flex flex-col sm:flex-row justify-between items-center gap-4">
-          <CardTitle className="text-2xl font-headline">Gerenciamento de Equipamentos</CardTitle>
-          <Dialog open={isFormDialogOpen} onOpenChange={(open) => { setIsFormDialogOpen(open); if (!open) setEditingEquipment(null); }}>
-            <DialogTrigger asChild>
-              <Button variant="default">
-                <PlusCircle className="mr-2 h-5 w-5" /> Adicionar Equipamento
+        <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4">
+          <CardTitle className="text-2xl font-headline flex-1">Gerenciamento de Equipamentos</CardTitle>
+          <div className="flex flex-col sm:flex-row gap-2 w-full sm:w-auto">
+             <Button variant="outline" onClick={() => fileInputRef.current?.click()} className="w-full sm:w-auto">
+                <FileUp className="mr-2 h-5 w-5" /> Importar CSV
               </Button>
-            </DialogTrigger>
-            <DialogContent className="sm:max-w-[525px]">
-              <DialogHeader>
-                <DialogTitle>{editingEquipment ? 'Editar Equipamento' : 'Adicionar Novo Equipamento'}</DialogTitle>
-                <DialogDescription>
-                  {editingEquipment ? 'Atualize os detalhes do equipamento.' : 'Preencha as informações do novo equipamento.'}
-                </DialogDescription>
-              </DialogHeader>
-              <Form {...form}>
-                <form onSubmit={form.handleSubmit(handleAddOrUpdateEquipment)} className="space-y-4 py-4">
-                  <FormField
-                    control={form.control}
-                    name="type"
-                    render={({ field }) => (
-                      <FormItem>
-                        <FormLabel>Tipo</FormLabel>
-                        <Select 
-                          onValueChange={field.onChange} 
-                          value={field.value}
-                          defaultValue={field.value}
-                        >
+              <Input 
+                type="file" 
+                ref={fileInputRef} 
+                onChange={handleImportCSV} 
+                accept=".csv" 
+                className="hidden" 
+              />
+            <Dialog open={isFormDialogOpen} onOpenChange={(open) => { setIsFormDialogOpen(open); if (!open) setEditingEquipment(null); }}>
+              <DialogTrigger asChild>
+                <Button variant="default" className="w-full sm:w-auto">
+                  <PlusCircle className="mr-2 h-5 w-5" /> Adicionar Equipamento
+                </Button>
+              </DialogTrigger>
+              <DialogContent className="sm:max-w-[525px]">
+                <DialogHeader>
+                  <DialogTitle>{editingEquipment ? 'Editar Equipamento' : 'Adicionar Novo Equipamento'}</DialogTitle>
+                  <DialogDescription>
+                    {editingEquipment ? 'Atualize os detalhes do equipamento.' : 'Preencha as informações do novo equipamento.'}
+                  </DialogDescription>
+                </DialogHeader>
+                <Form {...form}>
+                  <form onSubmit={form.handleSubmit(handleAddOrUpdateEquipment)} className="space-y-4 py-4">
+                    <FormField
+                      control={form.control}
+                      name="type"
+                      render={({ field }) => (
+                        <FormItem>
+                          <FormLabel>Tipo</FormLabel>
+                          <Select
+                            onValueChange={field.onChange}
+                            value={field.value}
+                            defaultValue={field.value}
+                          >
+                            <FormControl>
+                              <SelectTrigger>
+                                <SelectValue placeholder="Selecione um tipo" />
+                              </SelectTrigger>
+                            </FormControl>
+                            <SelectContent>
+                              {equipmentTypes.map(type => (
+                                <SelectItem key={type} value={type}>
+                                  {type}
+                                </SelectItem>
+                              ))}
+                            </SelectContent>
+                          </Select>
+                          <FormMessage />
+                        </FormItem>
+                      )}
+                    />
+                    <FormField
+                      control={form.control}
+                      name="name"
+                      render={({ field }) => (
+                        <FormItem>
+                          <FormLabel>Marca</FormLabel>
                           <FormControl>
-                            <SelectTrigger>
-                              <SelectValue placeholder="Selecione um tipo" />
-                            </SelectTrigger>
+                            <Input placeholder="Ex: Dell, HP, Apple" {...field} />
                           </FormControl>
-                          <SelectContent>
-                            {equipmentTypes.map(type => (
-                              <SelectItem key={type} value={type}>
-                                {type}
-                              </SelectItem>
-                            ))}
-                          </SelectContent>
-                        </Select>
-                        <FormMessage />
-                      </FormItem>
-                    )}
-                  />
-                  <FormField
-                    control={form.control}
-                    name="name"
-                    render={({ field }) => (
-                      <FormItem>
-                        <FormLabel>Marca</FormLabel>
-                        <FormControl>
-                          <Input placeholder="Ex: Dell, HP, Apple" {...field} />
-                        </FormControl>
-                        <FormMessage />
-                      </FormItem>
-                    )}
-                  />
-                  <FormField
-                    control={form.control}
-                    name="model"
-                    render={({ field }) => (
-                      <FormItem>
-                        <FormLabel>Modelo</FormLabel>
-                        <FormControl>
-                          <Input placeholder="Ex: XPS 15 9520, LaserJet M428fdw" {...field} value={field.value ?? ''} />
-                        </FormControl>
-                        <FormMessage />
-                      </FormItem>
-                    )}
-                  />
-                  <FormField
-                    control={form.control}
-                    name="serialNumber"
-                    render={({ field }) => (
-                      <FormItem>
-                        <FormLabel>Número de Série</FormLabel>
-                        <FormControl>
-                          <Input placeholder="Ex: ABC123XYZ" {...field} value={field.value ?? ''} />
-                        </FormControl>
-                        <FormMessage />
-                      </FormItem>
-                    )}
-                  />
-                  <FormField
-                    control={form.control}
-                    name="description"
-                    render={({ field }) => (
-                      <FormItem>
-                        <FormLabel>Descrição</FormLabel>
-                        <FormControl>
-                          <Textarea placeholder="Ex: i7, 16GB RAM, 512GB SSD, Cor Prata" {...field} value={field.value ?? ''} />
-                        </FormControl>
-                        <FormMessage />
-                      </FormItem>
-                    )}
-                  />
-                  <FormField
-                    control={form.control}
-                    name="barcode"
-                    render={({ field }) => (
-                      <FormItem>
-                        <FormLabel>Patrimônio</FormLabel>
-                        <FormControl>
-                          <Input placeholder="Ex: 1234567890123" {...field} />
-                        </FormControl>
-                        <FormMessage />
-                      </FormItem>
-                    )}
-                  />
-                  <FormField
-                    control={form.control}
-                    name="sectorId"
-                    render={({ field }) => (
-                      <FormItem>
-                        <FormLabel>Setor</FormLabel>
-                        <Select 
-                          onValueChange={field.onChange} 
-                          value={field.value || NO_SECTOR_VALUE}
-                        >
+                          <FormMessage />
+                        </FormItem>
+                      )}
+                    />
+                    <FormField
+                      control={form.control}
+                      name="model"
+                      render={({ field }) => (
+                        <FormItem>
+                          <FormLabel>Modelo</FormLabel>
                           <FormControl>
-                            <SelectTrigger>
-                              <SelectValue placeholder="Selecione um setor" />
-                            </SelectTrigger>
+                            <Input placeholder="Ex: XPS 15 9520, LaserJet M428fdw" {...field} value={field.value ?? ''} />
                           </FormControl>
-                          <SelectContent>
-                            <SelectItem value={NO_SECTOR_VALUE}>Nenhum setor</SelectItem>
-                            {sectors.map(sector => (
-                              <SelectItem key={sector.id} value={sector.id}>
-                                {sector.name}
-                              </SelectItem>
-                            ))}
-                          </SelectContent>
-                        </Select>
-                        <FormMessage />
-                      </FormItem>
-                    )}
-                  />
-                  <DialogFooter>
-                    <DialogClose asChild>
-                       <Button type="button" variant="outline">Cancelar</Button>
-                    </DialogClose>
-                    <Button type="submit">{editingEquipment ? 'Salvar Alterações' : 'Adicionar Equipamento'}</Button>
-                  </DialogFooter>
-                </form>
-              </Form>
-            </DialogContent>
-          </Dialog>
+                          <FormMessage />
+                        </FormItem>
+                      )}
+                    />
+                    <FormField
+                      control={form.control}
+                      name="serialNumber"
+                      render={({ field }) => (
+                        <FormItem>
+                          <FormLabel>Número de Série</FormLabel>
+                          <FormControl>
+                            <Input placeholder="Ex: ABC123XYZ" {...field} value={field.value ?? ''} />
+                          </FormControl>
+                          <FormMessage />
+                        </FormItem>
+                      )}
+                    />
+                    <FormField
+                      control={form.control}
+                      name="description"
+                      render={({ field }) => (
+                        <FormItem>
+                          <FormLabel>Descrição</FormLabel>
+                          <FormControl>
+                            <Textarea placeholder="Ex: i7, 16GB RAM, 512GB SSD, Cor Prata" {...field} value={field.value ?? ''} />
+                          </FormControl>
+                          <FormMessage />
+                        </FormItem>
+                      )}
+                    />
+                    <FormField
+                      control={form.control}
+                      name="barcode"
+                      render={({ field }) => (
+                        <FormItem>
+                          <FormLabel>Patrimônio</FormLabel>
+                          <FormControl>
+                            <Input placeholder="Ex: 1234567890123" {...field} />
+                          </FormControl>
+                          <FormMessage />
+                        </FormItem>
+                      )}
+                    />
+                    <FormField
+                      control={form.control}
+                      name="sectorId"
+                      render={({ field }) => (
+                        <FormItem>
+                          <FormLabel>Setor</FormLabel>
+                          <Select
+                            onValueChange={field.onChange}
+                            value={field.value || NO_SECTOR_VALUE}
+                          >
+                            <FormControl>
+                              <SelectTrigger>
+                                <SelectValue placeholder="Selecione um setor" />
+                              </SelectTrigger>
+                            </FormControl>
+                            <SelectContent>
+                              <SelectItem value={NO_SECTOR_VALUE}>Nenhum setor</SelectItem>
+                              {sectors.map(sector => (
+                                <SelectItem key={sector.id} value={sector.id}>
+                                  {sector.name}
+                                </SelectItem>
+                              ))}
+                            </SelectContent>
+                          </Select>
+                          <FormMessage />
+                        </FormItem>
+                      )}
+                    />
+                    <DialogFooter>
+                      <DialogClose asChild>
+                         <Button type="button" variant="outline">Cancelar</Button>
+                      </DialogClose>
+                      <Button type="submit">{editingEquipment ? 'Salvar Alterações' : 'Adicionar Equipamento'}</Button>
+                    </DialogFooter>
+                  </form>
+                </Form>
+              </DialogContent>
+            </Dialog>
+          </div>
         </div>
         <div className="mt-4 flex flex-col sm:flex-row flex-wrap gap-2">
           <div className="relative w-full sm:flex-1 min-w-[200px]">
@@ -429,12 +555,12 @@ export default function EquipamentosPage() {
               ))}
             </SelectContent>
           </Select>
-          <Button variant="outline" onClick={handleExportClick} className="w-full sm:flex-1">
+          <Button variant="outline" onClick={handleExportClick} className="w-full sm:flex-1 sm:min-w-0">
             <FileDown className="mr-2 h-4 w-4" /> Exportar
           </Button>
            <AlertDialog open={isMarkUncheckedDialogOpen} onOpenChange={setIsMarkUncheckedDialogOpen}>
             <AlertDialogTrigger asChild>
-              <Button variant="destructive" className="w-full sm:flex-1" onClick={() => { setSectorToMarkUnchecked(undefined); setIsMarkUncheckedDialogOpen(true); }}>
+              <Button variant="destructive" className="w-full sm:flex-1 sm:min-w-0" onClick={() => { setSectorToMarkUnchecked(undefined); setIsMarkUncheckedDialogOpen(true); }}>
                 <ClipboardX className="mr-2 h-4 w-4" /> Limpar Conferências
               </Button>
             </AlertDialogTrigger>
@@ -447,8 +573,8 @@ export default function EquipamentosPage() {
               </AlertDialogHeader>
               <div className="py-4 space-y-2">
                 <Label htmlFor="select-sector-uncheck">Setor Alvo</Label>
-                <Select 
-                  value={sectorToMarkUnchecked} 
+                <Select
+                  value={sectorToMarkUnchecked}
                   onValueChange={setSectorToMarkUnchecked}
                 >
                   <SelectTrigger id="select-sector-uncheck">
@@ -466,7 +592,7 @@ export default function EquipamentosPage() {
               </div>
               <AlertDialogFooter>
                 <AlertDialogCancel onClick={() => setSectorToMarkUnchecked(undefined)}>Cancelar</AlertDialogCancel>
-                <AlertDialogAction 
+                <AlertDialogAction
                   onClick={handleConfirmMarkAsNotChecked}
                   disabled={!sectorToMarkUnchecked}
                   className={cn(!sectorToMarkUnchecked && "bg-destructive/50 hover:bg-destructive/50")}
@@ -550,3 +676,5 @@ export default function EquipamentosPage() {
   );
 }
 
+
+    
