@@ -90,7 +90,7 @@ export default function ConferenciaPage() {
           <ScanBarcode className="mx-auto h-16 w-16 text-primary mb-2" />
           <CardTitle className="text-3xl font-headline">Conferência de Inventário</CardTitle>
           <CardDescription>
-            Use um leitor de código de barras ou digite o código para verificar um equipamento.
+            Use um leitor ou digite o código do Patrimônio para conferir equipamento.
           </CardDescription>
         </CardHeader>
         <CardContent className="space-y-6">
