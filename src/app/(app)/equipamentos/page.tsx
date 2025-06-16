@@ -2,7 +2,7 @@
 "use client";
 
 import * as React from 'react';
-import { PlusCircle, Edit, Trash2, Search, Filter, FileDown, ClipboardX, FileUp } from 'lucide-react';
+import { PlusCircle, Edit, Trash2, Search, Filter, FileDown, ClipboardX, FileUp, CalendarDays } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import {
   Table,
@@ -46,6 +46,7 @@ import type { Equipment, Sector } from '@/lib/types';
 import { mockEquipment, mockSectors } from '@/lib/mock-data';
 import { useToast } from '@/hooks/use-toast';
 import { cn } from '@/lib/utils';
+import { format } from 'date-fns';
 
 const equipmentTypes = ['Gabinete', 'Impressora', 'Notebook', 'Monitor', 'Switch'];
 
@@ -137,7 +138,7 @@ export default function EquipamentosPage() {
     if (editingEquipment) {
       updatedEquipments = equipments.map(eq =>
         eq.id === editingEquipment.id
-        ? { ...editingEquipment,
+        ? { ...editingEquipment, // Keep existing createdAt
             type: data.type,
             name: data.name,
             model: data.model,
@@ -151,7 +152,6 @@ export default function EquipamentosPage() {
       );
       toast({ title: 'Sucesso!', description: 'Equipamento atualizado.' });
     } else {
-      // Check for duplicate barcode before adding
       if (equipments.some(eq => eq.barcode === data.barcode)) {
         toast({
           variant: 'destructive',
@@ -170,6 +170,7 @@ export default function EquipamentosPage() {
         barcode: data.barcode,
         sectorId: finalSectorId,
         sectorName,
+        createdAt: Date.now(), // Add createdAt timestamp for new equipment
       };
       updatedEquipments = [newEquipment, ...equipments];
       toast({ title: 'Sucesso!', description: 'Equipamento adicionado.' });
@@ -281,7 +282,7 @@ export default function EquipamentosPage() {
         return;
       }
 
-      const header = lines[0].split(',').map(h => h.trim().toLowerCase()); // Ensure header is lower case for comparison
+      const header = lines[0].split(',').map(h => h.trim().toLowerCase());
       const expectedHeader = ['type', 'name', 'model', 'serialnumber', 'description', 'barcode', 'sectorname'];
       
       if (header.length !== expectedHeader.length || !expectedHeader.every((h, i) => h === header[i])) {
@@ -304,12 +305,11 @@ export default function EquipamentosPage() {
       dataLines.forEach((line, index) => {
         const values = line.split(',');
         const rowData: any = {};
-        // Use the actual header from the file for mapping, but ensure it matches expected structure
         lines[0].split(',').map(h => h.trim()).forEach((col, i) => { 
           rowData[col] = values[i]?.trim() || '';
         });
         
-        const sectorName = rowData.sectorName; // Case-sensitive original sectorName from CSV
+        const sectorName = rowData.sectorName;
         let sectorId: string | undefined = undefined;
         let actualSectorNameForEquipment: string | undefined = undefined;
 
@@ -317,7 +317,7 @@ export default function EquipamentosPage() {
           const foundSector = sectors.find(s => s.name.toLowerCase() === sectorName.toLowerCase());
           if (foundSector) {
             sectorId = foundSector.id;
-            actualSectorNameForEquipment = foundSector.name; // Use the exact name from stored sectors
+            actualSectorNameForEquipment = foundSector.name;
           } else {
              errors.push(`Linha ${index + 2}: Setor '${sectorName}' não encontrado. Equipamento será adicionado sem setor.`);
           }
@@ -344,7 +344,8 @@ export default function EquipamentosPage() {
             newEquipmentsFromCSV.push({
               id: `equip-${Date.now()}-${index}`,
               ...validationResult.data,
-              sectorName: actualSectorNameForEquipment, 
+              sectorName: actualSectorNameForEquipment,
+              createdAt: Date.now(), // Add createdAt timestamp for imported equipment
             });
             importedCount++;
           }
@@ -388,7 +389,7 @@ export default function EquipamentosPage() {
         fileInputRef.current.value = "";
       }
     };
-    reader.readAsText(file, 'UTF-8'); // Specify UTF-8 encoding
+    reader.readAsText(file, 'UTF-8');
   };
 
 
@@ -639,6 +640,7 @@ export default function EquipamentosPage() {
                 <TableHead className="hidden md:table-cell">Nº de Série</TableHead>
                 <TableHead>Patrimônio</TableHead>
                 <TableHead>Setor</TableHead>
+                <TableHead className="hidden lg:table-cell">Data Cadastro</TableHead>
                 <TableHead className="hidden lg:table-cell">Descrição</TableHead>
                 <TableHead className="text-right">Ações</TableHead>
               </TableRow>
@@ -657,6 +659,9 @@ export default function EquipamentosPage() {
                   <TableCell className="hidden md:table-cell max-w-[150px] truncate">{equipment.serialNumber || 'N/A'}</TableCell>
                   <TableCell>{equipment.barcode}</TableCell>
                   <TableCell>{equipment.sectorName || 'N/A'}</TableCell>
+                  <TableCell className="hidden lg:table-cell">
+                    {equipment.createdAt ? format(new Date(equipment.createdAt), 'dd/MM/yyyy') : 'N/A'}
+                  </TableCell>
                   <TableCell className="hidden lg:table-cell max-w-xs truncate">{equipment.description || 'N/A'}</TableCell>
                   <TableCell className="text-right">
                     <Button variant="ghost" size="icon" onClick={() => openEditDialog(equipment)} className="hover:text-primary">
@@ -687,7 +692,7 @@ export default function EquipamentosPage() {
                 </TableRow>
               )) : (
                 <TableRow>
-                  <TableCell colSpan={8} className="text-center h-24">
+                  <TableCell colSpan={9} className="text-center h-24">
                     Nenhum equipamento encontrado.
                   </TableCell>
                 </TableRow>

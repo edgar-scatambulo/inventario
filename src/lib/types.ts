@@ -10,6 +10,7 @@ export interface Equipment {
   sectorId?: string;
   sectorName?: string; // For display purposes
   lastCheckedTimestamp?: number; // Timestamp of the last successful conference
+  createdAt?: number; // Timestamp of when the equipment was created
 }
 
 export interface Sector {
