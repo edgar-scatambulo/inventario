@@ -211,10 +211,7 @@ export default function RelatoriosPage() {
           <CardContent>
             {filteredReportItems.length > 0 ? (
               <div className="overflow-x-auto">
-                <div className="mb-4 hidden print:block">
-                  <h2 className="text-2xl font-semibold">{reportData.title || "Relatório de Inventário"}</h2>
-                  <p className="text-sm text-muted-foreground">Gerado em: {new Date().toLocaleString()}</p>
-                </div>
+                {/* Removed print-specific header block */}
                 <Table>
                   <TableHeader>
                     <TableRow>
