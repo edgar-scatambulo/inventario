@@ -151,6 +151,15 @@ export default function EquipamentosPage() {
       );
       toast({ title: 'Sucesso!', description: 'Equipamento atualizado.' });
     } else {
+      // Check for duplicate barcode before adding
+      if (equipments.some(eq => eq.barcode === data.barcode)) {
+        toast({
+          variant: 'destructive',
+          title: 'Erro ao Adicionar',
+          description: `Equipamento com patrimônio ${data.barcode} já existe.`,
+        });
+        return;
+      }
       const newEquipment: Equipment = {
         id: `equip-${Date.now()}`,
         type: data.type,
@@ -266,45 +275,50 @@ export default function EquipamentosPage() {
         return;
       }
 
-      const lines = text.split(/\r\n|\n/).filter(line => line.trim() !== ''); // Ignora linhas vazias
+      const lines = text.split(/\r\n|\n/).filter(line => line.trim() !== '');
       if (lines.length <= 1) {
         toast({ variant: "destructive", title: "Arquivo CSV Vazio ou Inválido", description: "O arquivo CSV não contém dados ou possui apenas o cabeçalho." });
         return;
       }
 
-      const header = lines[0].split(',').map(h => h.trim());
-      const expectedHeader = ['type', 'name', 'model', 'serialNumber', 'description', 'barcode', 'sectorName'];
+      const header = lines[0].split(',').map(h => h.trim().toLowerCase()); // Ensure header is lower case for comparison
+      const expectedHeader = ['type', 'name', 'model', 'serialnumber', 'description', 'barcode', 'sectorname'];
       
-      // Basic header validation
       if (header.length !== expectedHeader.length || !expectedHeader.every((h, i) => h === header[i])) {
          toast({
           variant: "destructive",
           title: "Cabeçalho CSV Inválido",
-          description: `O cabeçalho esperado é: ${expectedHeader.join(',')}. O fornecido foi: ${header.join(',')}`,
+          description: <pre className="whitespace-pre-wrap text-xs">O cabeçalho esperado é: {expectedHeader.join(',')}. O fornecido foi: {header.join(',')}</pre>,
+          duration: 10000,
         });
+        if (fileInputRef.current) fileInputRef.current.value = "";
         return;
       }
 
-
       const dataLines = lines.slice(1);
-      const newEquipments: Equipment[] = [];
+      const newEquipmentsFromCSV: Equipment[] = [];
       const errors: string[] = [];
+      let importedCount = 0;
+      let duplicateCount = 0;
 
       dataLines.forEach((line, index) => {
         const values = line.split(',');
         const rowData: any = {};
-        header.forEach((col, i) => {
+        // Use the actual header from the file for mapping, but ensure it matches expected structure
+        lines[0].split(',').map(h => h.trim()).forEach((col, i) => { 
           rowData[col] = values[i]?.trim() || '';
         });
-
-        const sectorName = rowData.sectorName;
+        
+        const sectorName = rowData.sectorName; // Case-sensitive original sectorName from CSV
         let sectorId: string | undefined = undefined;
+        let actualSectorNameForEquipment: string | undefined = undefined;
+
         if (sectorName) {
           const foundSector = sectors.find(s => s.name.toLowerCase() === sectorName.toLowerCase());
           if (foundSector) {
             sectorId = foundSector.id;
+            actualSectorNameForEquipment = foundSector.name; // Use the exact name from stored sectors
           } else {
-            // Optionally, create new sector or warn. For now, just warn if sector not found.
              errors.push(`Linha ${index + 2}: Setor '${sectorName}' não encontrado. Equipamento será adicionado sem setor.`);
           }
         }
@@ -322,49 +336,59 @@ export default function EquipamentosPage() {
         const validationResult = equipmentFormSchema.safeParse(parsedData);
 
         if (validationResult.success) {
-          newEquipments.push({
-            id: `equip-${Date.now()}-${index}`,
-            ...validationResult.data,
-            sectorName: sectorId ? sectors.find(s => s.id === sectorId)?.name : undefined,
-          });
+          if (equipments.some(eq => eq.barcode === validationResult.data.barcode) || 
+              newEquipmentsFromCSV.some(eq => eq.barcode === validationResult.data.barcode) ) {
+            errors.push(`Linha ${index + 2}: Patrimônio '${validationResult.data.barcode}' já existe e foi ignorado.`);
+            duplicateCount++;
+          } else {
+            newEquipmentsFromCSV.push({
+              id: `equip-${Date.now()}-${index}`,
+              ...validationResult.data,
+              sectorName: actualSectorNameForEquipment, 
+            });
+            importedCount++;
+          }
         } else {
           const errorMessages = validationResult.error.errors.map(err => `${err.path.join('.')}: ${err.message}`).join(', ');
           errors.push(`Linha ${index + 2}: ${errorMessages}`);
         }
       });
 
-      if (newEquipments.length > 0) {
-        const updatedEquipments = [...newEquipments, ...equipments];
+      if (newEquipmentsFromCSV.length > 0) {
+        const updatedEquipments = [...newEquipmentsFromCSV, ...equipments];
         setEquipments(updatedEquipments);
         localStorage.setItem(EQUIPMENTS_STORAGE_KEY, JSON.stringify(updatedEquipments));
-        toast({ title: 'Importação Concluída!', description: `${newEquipments.length} equipamentos importados com sucesso.` });
-      } else if (errors.length === dataLines.length) {
+      }
+      
+      if (importedCount > 0) {
+         toast({ title: 'Importação Concluída!', description: `${importedCount} equipamentos importados com sucesso.` });
+      } else if (errors.length === dataLines.length && importedCount === 0 && duplicateCount === 0) {
          toast({ variant: "destructive", title: 'Importação Falhou', description: 'Nenhum equipamento válido encontrado no arquivo CSV.' });
+      } else if (importedCount === 0 && (errors.length > 0 || duplicateCount > 0)){
+         toast({ variant: "default", title: 'Importação Finalizada', description: 'Nenhum novo equipamento foi adicionado. Verifique os erros.' });
       }
 
 
       if (errors.length > 0) {
-        // Limit the number of errors shown in toast to avoid overwhelming the UI
-        const displayedErrors = errors.slice(0, 3);
+        const displayedErrors = errors.slice(0, 5);
         const additionalErrorCount = errors.length - displayedErrors.length;
         let errorDescription = displayedErrors.join('\n');
         if (additionalErrorCount > 0) {
-          errorDescription += `\nE mais ${additionalErrorCount} outros erros.`;
+          errorDescription += `\nE mais ${additionalErrorCount} outros erros/avisos.`;
         }
          toast({
           variant: "destructive",
-          title: "Erros na Importação de CSV",
-          description: <pre className="whitespace-pre-wrap text-xs">{errorDescription}</pre>,
-          duration: 10000, 
+          title: "Erros/Avisos na Importação de CSV",
+          description: <pre className="whitespace-pre-wrap text-xs max-h-40 overflow-y-auto">{errorDescription}</pre>,
+          duration: 15000, 
         });
       }
       
-      // Reset file input
       if (fileInputRef.current) {
         fileInputRef.current.value = "";
       }
     };
-    reader.readAsText(file);
+    reader.readAsText(file, 'UTF-8'); // Specify UTF-8 encoding
   };
 
 
@@ -509,7 +533,7 @@ export default function EquipamentosPage() {
                             </FormControl>
                             <SelectContent>
                               <SelectItem value={NO_SECTOR_VALUE}>Nenhum setor</SelectItem>
-                              {sectors.map(sector => (
+                              {sectors.sort((a,b) => a.name.localeCompare(b.name)).map(sector => (
                                 <SelectItem key={sector.id} value={sector.id}>
                                   {sector.name}
                                 </SelectItem>
@@ -550,7 +574,7 @@ export default function EquipamentosPage() {
             </SelectTrigger>
             <SelectContent>
               <SelectItem value="all">Todos os Setores</SelectItem>
-              {sectors.map(sector => (
+              {sectors.sort((a,b) => a.name.localeCompare(b.name)).map(sector => (
                 <SelectItem key={sector.id} value={sector.id}>{sector.name}</SelectItem>
               ))}
             </SelectContent>
@@ -582,7 +606,7 @@ export default function EquipamentosPage() {
                   </SelectTrigger>
                   <SelectContent>
                     <SelectItem value={ALL_SECTORS_VALUE}>Todos os Setores</SelectItem>
-                    {sectors.map(sector => (
+                    {sectors.sort((a,b) => a.name.localeCompare(b.name)).map(sector => (
                       <SelectItem key={sector.id} value={sector.id}>
                         {sector.name}
                       </SelectItem>
@@ -675,6 +699,3 @@ export default function EquipamentosPage() {
     </Card>
   );
 }
-
-
-    
