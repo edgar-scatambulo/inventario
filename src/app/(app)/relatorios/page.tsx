@@ -132,6 +132,10 @@ export default function RelatoriosPage() {
     window.print();
   };
 
+  const sortedSectors = React.useMemo(() => {
+    return [...sectors].sort((a, b) => a.name.localeCompare(b.name));
+  }, [sectors]);
+
   return (
     <div className="space-y-8">
       <Card className="shadow-lg">
@@ -161,7 +165,7 @@ export default function RelatoriosPage() {
                     <SelectValue placeholder="Selecione um setor" />
                   </SelectTrigger>
                   <SelectContent>
-                    {sectors.map(sector => (
+                    {sortedSectors.map(sector => (
                       <SelectItem key={sector.id} value={sector.id}>
                         {sector.name}
                       </SelectItem>
