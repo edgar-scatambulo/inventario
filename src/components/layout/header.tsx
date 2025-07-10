@@ -1,3 +1,4 @@
+
 "use client";
 
 import {
@@ -66,7 +67,7 @@ export function Header() {
   };
 
   return (
-    <header className="sticky top-0 z-30 flex h-16 items-center gap-4 border-b bg-background/80 px-4 backdrop-blur-md sm:px-6">
+    <header className="sticky top-0 z-30 flex h-16 items-center gap-4 border-b bg-background/80 px-4 backdrop-blur-md sm:px-6 print:hidden">
       <div className="md:hidden">
         <SidebarTrigger />
       </div>

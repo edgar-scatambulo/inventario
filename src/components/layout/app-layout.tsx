@@ -16,6 +16,7 @@ import { Header } from './header';
 import { Button } from '@/components/ui/button';
 import { PanelLeftClose, PanelLeftOpen } from 'lucide-react';
 import { useSidebar } from '@/components/ui/sidebar'; // Import useSidebar
+import { cn } from '@/lib/utils';
 
 function CustomSidebarTrigger() {
   const { toggleSidebar, open, isMobile } = useSidebar();
@@ -38,7 +39,7 @@ function CustomSidebarTrigger() {
 export default function AppLayout({ children }: { children: React.ReactNode }) {
   return (
     <SidebarProvider defaultOpen={true}>
-      <Sidebar collapsible="icon" variant="sidebar" side="left">
+      <Sidebar collapsible="icon" variant="sidebar" side="left" className="print:hidden">
         <SidebarHeader className="relative p-4">
           <div className="flex items-center gap-2 group-data-[collapsible=icon]:justify-center">
             <Logo />
