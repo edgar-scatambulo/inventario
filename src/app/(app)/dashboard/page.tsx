@@ -6,7 +6,6 @@ import { Button } from "@/components/ui/button";
 import Link from "next/link";
 import { Package, ScanBarcode, FileText, ArrowRight, PieChart as PieChartIcon, AlertTriangle, BarChartBig } from "lucide-react";
 import type { Equipment, Sector } from '@/lib/types';
-import { mockEquipment, mockSectors } from '@/lib/mock-data'; 
 
 import { PieChart, Pie, Cell, BarChart, Bar, XAxis, YAxis, CartesianGrid, ResponsiveContainer } from 'recharts'; 
 import {
@@ -15,15 +14,17 @@ import {
   ChartTooltipContent,
   type ChartConfig
 } from "@/components/ui/chart";
+import { getFirestore, collection, onSnapshot } from 'firebase/firestore';
+import { app } from '@/lib/firebase-config';
+import { useToast } from '@/hooks/use-toast';
+
+const db = getFirestore(app);
 
 const quickAccessItems = [
   { title: "Cadastrar Equipamento", href: "/equipamentos", icon: Package, description: "Adicione novos itens." },
   { title: "Conferir Inventário", href: "/conferencia", icon: ScanBarcode, description: "Realizar conferência." },
   { title: "Ver Relatórios", href: "/relatorios", icon: FileText, description: "Visualizar relatório completo." },
 ];
-
-const EQUIPMENTS_STORAGE_KEY = 'localStorage_equipments';
-const SECTORS_STORAGE_KEY = 'localStorage_sectors';
 
 const conferenceChartConfig = {
   conferidos: { 
@@ -71,88 +72,90 @@ const isTimestampToday = (timestamp?: number): boolean => {
 };
 
 export default function DashboardPage() {
-  const [allEquipments, setAllEquipmentsLocal] = React.useState<Equipment[]>([]);
+  const { toast } = useToast();
   const [totalEquipments, setTotalEquipments] = React.useState<number>(0);
   const [totalSectors, setTotalSectors] = React.useState<number>(0);
   const [itemsCheckedTodayCount, setItemsCheckedTodayCount] = React.useState<number>(0);
-  const [itemsNotCheckedCount, setItemsNotCheckedCount] = React.useState<number>(0); // Total not checked overall
+  const [itemsNotCheckedCount, setItemsNotCheckedCount] = React.useState<number>(0);
   const [conferenceChartData, setConferenceChartData] = React.useState<Array<{ category: keyof typeof conferenceChartConfig; value: number; fill: string }>>([]);
   const [equipmentsBySectorData, setEquipmentsBySectorData] = React.useState<Array<{ name: string; conferidos: number; naoConferidos: number }>>([]);
 
   React.useEffect(() => {
-    let equipments: Equipment[] = [];
-    const storedEquipments = localStorage.getItem(EQUIPMENTS_STORAGE_KEY);
-    if (storedEquipments) {
-      try {
-        equipments = JSON.parse(storedEquipments);
-      } catch (e) {
-        console.error("Failed to parse equipments from localStorage", e);
-        equipments = mockEquipment; 
-      }
-    } else {
-      equipments = mockEquipment; 
-    }
-    setAllEquipmentsLocal(equipments);
-    setTotalEquipments(equipments.length);
-
-    let checkedToday = 0;
-    let totalOverallConferenced = 0;
-    let totalOverallNotConferenced = 0;
-
-    equipments.forEach(eq => {
-      if (eq.lastCheckedTimestamp) {
-        totalOverallConferenced++;
-        if (isTimestampToday(eq.lastCheckedTimestamp)) {
-          checkedToday++;
-        }
-      } else {
-        totalOverallNotConferenced++;
-      }
-    });
-    setItemsCheckedTodayCount(checkedToday);
-    setItemsNotCheckedCount(totalOverallNotConferenced); // Set total not checked count
-    
-    setConferenceChartData([
-      { category: "conferidos", value: totalOverallConferenced, fill: 'var(--color-conferidos)' },
-      { category: "naoConferidos", value: totalOverallNotConferenced, fill: 'var(--color-naoConferidos)' },
-    ]);
-
-    const sectorAggregates: { [key: string]: { conferidos: number; naoConferidos: number } } = {};
-    equipments.forEach(eq => {
-      const sectorName = eq.sectorName || "Não Atribuído";
-      if (!sectorAggregates[sectorName]) {
-        sectorAggregates[sectorName] = { conferidos: 0, naoConferidos: 0 };
-      }
-      if (eq.lastCheckedTimestamp) {
-        sectorAggregates[sectorName].conferidos++;
-      } else {
-        sectorAggregates[sectorName].naoConferidos++;
-      }
+    // Listen for sectors
+    const qSectors = collection(db, "sectors");
+    const unsubscribeSectors = onSnapshot(qSectors, (querySnapshot) => {
+        setTotalSectors(querySnapshot.size);
+    }, (error) => {
+        console.error("Error fetching sectors count: ", error);
+        toast({ variant: 'destructive', title: 'Erro de Conexão', description: 'Não foi possível buscar os dados de setores.' });
     });
 
-    const bySectorData = Object.entries(sectorAggregates)
-      .map(([name, counts]) => ({
-        name,
-        conferidos: counts.conferidos,
-        naoConferidos: counts.naoConferidos,
-      }))
-      .sort((a, b) => (b.conferidos + b.naoConferidos) - (a.conferidos + a.naoConferidos)); 
-    setEquipmentsBySectorData(bySectorData);
+    // Listen for equipments and compute all stats
+    const qEquipments = collection(db, "equipments");
+    const unsubscribeEquipments = onSnapshot(qEquipments, (querySnapshot) => {
+        const equipments: Equipment[] = [];
+        querySnapshot.forEach((doc) => {
+            equipments.push({ id: doc.id, ...doc.data() } as Equipment);
+        });
+        
+        setTotalEquipments(equipments.length);
 
+        let checkedToday = 0;
+        let totalOverallConferenced = 0;
+        let totalOverallNotConferenced = 0;
 
-    const storedSectors = localStorage.getItem(SECTORS_STORAGE_KEY);
-    if (storedSectors) {
-      try {
-        const sectors: Sector[] = JSON.parse(storedSectors);
-        setTotalSectors(sectors.length);
-      } catch (e) {
-        console.error("Failed to parse sectors from localStorage", e);
-        setTotalSectors(mockSectors.length); 
-      }
-    } else {
-      setTotalSectors(mockSectors.length); 
-    }
-  }, []);
+        equipments.forEach(eq => {
+            if (eq.lastCheckedTimestamp) {
+                totalOverallConferenced++;
+                // Firestore Timestamps are objects, so we need to convert to milliseconds
+                const timestampInMillis = typeof eq.lastCheckedTimestamp === 'object' && eq.lastCheckedTimestamp.toMillis ? eq.lastCheckedTimestamp.toMillis() : eq.lastCheckedTimestamp;
+                if (isTimestampToday(timestampInMillis)) {
+                    checkedToday++;
+                }
+            } else {
+                totalOverallNotConferenced++;
+            }
+        });
+        setItemsCheckedTodayCount(checkedToday);
+        setItemsNotCheckedCount(totalOverallNotConferenced);
+
+        setConferenceChartData([
+            { category: "conferidos", value: totalOverallConferenced, fill: 'var(--color-conferidos)' },
+            { category: "naoConferidos", value: totalOverallNotConferenced, fill: 'var(--color-naoConferidos)' },
+        ]);
+
+        const sectorAggregates: { [key: string]: { conferidos: number; naoConferidos: number } } = {};
+        equipments.forEach(eq => {
+            const sectorName = eq.sectorName || "Não Atribuído";
+            if (!sectorAggregates[sectorName]) {
+                sectorAggregates[sectorName] = { conferidos: 0, naoConferidos: 0 };
+            }
+            if (eq.lastCheckedTimestamp) {
+                sectorAggregates[sectorName].conferidos++;
+            } else {
+                sectorAggregates[sectorName].naoConferidos++;
+            }
+        });
+
+        const bySectorData = Object.entries(sectorAggregates)
+            .map(([name, counts]) => ({
+                name,
+                conferidos: counts.conferidos,
+                naoConferidos: counts.naoConferidos,
+            }))
+            .sort((a, b) => (b.conferidos + b.naoConferidos) - (a.conferidos + a.naoConferidos)); 
+        setEquipmentsBySectorData(bySectorData);
+
+    }, (error) => {
+        console.error("Error fetching equipments: ", error);
+        toast({ variant: 'destructive', title: 'Erro de Conexão', description: 'Não foi possível buscar os dados de equipamentos.' });
+    });
+
+    return () => {
+        unsubscribeSectors();
+        unsubscribeEquipments();
+    };
+  }, [toast]);
 
   return (
     <div className="space-y-8">
@@ -359,6 +362,4 @@ export default function DashboardPage() {
     </div>
   );
 }
-
-
     

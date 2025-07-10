@@ -8,7 +8,7 @@ import { Input } from '@/components/ui/input';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import type { Equipment } from '@/lib/types';
 import { useToast } from '@/hooks/use-toast';
-import { getFirestore, doc, getDoc, writeBatch, serverTimestamp, Timestamp } from "firebase/firestore";
+import { getFirestore, doc, getDoc, writeBatch, serverTimestamp, Timestamp, collection, onSnapshot } from "firebase/firestore";
 import { app } from '@/lib/firebase-config';
 import { useAuth } from '@/hooks/use-auth';
 
@@ -25,21 +25,28 @@ export default function ConferenciaPage() {
   const inputRef = React.useRef<HTMLInputElement>(null);
 
   React.useEffect(() => {
-    // This component still uses localStorage as a cache for quick barcode lookups.
-    // The source of truth for updates is Firestore.
-    const storedEquipments = localStorage.getItem(EQUIPMENTS_STORAGE_KEY);
-    if (storedEquipments) {
-      setAllEquipment(JSON.parse(storedEquipments));
-    } else {
-      // In a real scenario, you might fetch from Firestore here if cache is empty.
-      // For now, we rely on the equipments page to populate the cache.
-      toast({
-        title: "Cache de Equipamentos Vazio",
-        description: "Visite a página de Equipamentos para popular os dados locais.",
-        variant: "default"
-      });
-    }
-  }, []);
+    // This now listens for real-time updates from Firestore
+    const q = collection(db, "equipments");
+    const unsubscribe = onSnapshot(q, (querySnapshot) => {
+        const equipmentsData: Equipment[] = [];
+        querySnapshot.forEach((doc) => {
+            equipmentsData.push({ id: doc.id, ...doc.data() } as Equipment);
+        });
+        setAllEquipment(equipmentsData);
+        // Also update localStorage for quick lookups
+        localStorage.setItem(EQUIPMENTS_STORAGE_KEY, JSON.stringify(equipmentsData));
+    }, (error) => {
+        console.error("Error fetching real-time equipments for conference: ", error);
+        toast({
+            variant: "destructive",
+            title: "Erro de Conexão",
+            description: "Não foi possível carregar os equipamentos do banco de dados.",
+        });
+    });
+
+    return () => unsubscribe();
+  }, [toast]);
+
 
   const handleCheckBarcode = async (e?: React.FormEvent<HTMLFormElement>) => {
     e?.preventDefault();
@@ -69,14 +76,14 @@ export default function ConferenciaPage() {
     if (foundEquipmentInCache) {
       try {
         const batch = writeBatch(db);
-        const conferenceTimestamp = Date.now();
+        const conferenceTimestamp = Timestamp.now();
 
         // 1. Update the equipment document
         const equipmentRef = doc(db, "equipments", foundEquipmentInCache.id);
         batch.update(equipmentRef, { lastCheckedTimestamp: conferenceTimestamp });
 
         // 2. Create a new document in the 'conferences' collection
-        const conferenceRef = doc(db, "conferences", `${foundEquipmentInCache.id}-${conferenceTimestamp}`);
+        const conferenceRef = doc(collection(db, "conferences"));
         batch.set(conferenceRef, {
           equipmentId: foundEquipmentInCache.id,
           barcode: foundEquipmentInCache.barcode,
@@ -86,21 +93,15 @@ export default function ConferenciaPage() {
           sectorName: foundEquipmentInCache.sectorName || 'Não atribuído',
           userId: user.uid,
           userEmail: user.email,
-          timestamp: Timestamp.fromMillis(conferenceTimestamp),
+          timestamp: conferenceTimestamp,
         });
 
         await batch.commit();
-
-        // Update local state and localStorage cache
-        const updatedEquipments = allEquipment.map(eq =>
-          eq.id === foundEquipmentInCache.id
-            ? { ...eq, lastCheckedTimestamp: conferenceTimestamp }
-            : eq
-        );
-        setAllEquipment(updatedEquipments);
-        localStorage.setItem(EQUIPMENTS_STORAGE_KEY, JSON.stringify(updatedEquipments));
-
-        setCheckedEquipment({ ...foundEquipmentInCache, lastCheckedTimestamp: conferenceTimestamp });
+        
+        // No need to update local state manually, onSnapshot will do it.
+        const updatedEquipmentFromState = { ...foundEquipmentInCache, lastCheckedTimestamp: conferenceTimestamp.toMillis() };
+        setCheckedEquipment(updatedEquipmentFromState);
+        
         toast({
           title: 'Equipamento Conferido!',
           description: `${foundEquipmentInCache.type || ''} ${foundEquipmentInCache.name} localizado no setor ${foundEquipmentInCache.sectorName || 'N/A'}. Conferência registrada com sucesso.`,

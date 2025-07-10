@@ -9,8 +9,12 @@ import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Input } from '@/components/ui/input';
 import type { Equipment, Sector } from '@/lib/types';
-import { mockEquipment, mockSectors } from '@/lib/mock-data';
 import { useToast } from '@/hooks/use-toast';
+import { getFirestore, collection, onSnapshot, Timestamp } from 'firebase/firestore';
+import { app } from '@/lib/firebase-config';
+import { Label } from '@/components/ui/label';
+import { Switch } from '@/components/ui/switch';
+
 
 type ReportType = 'total' | 'bySector' | 'notConferenced';
 
@@ -21,8 +25,7 @@ interface ReportData {
   title?: string; 
 }
 
-const EQUIPMENTS_STORAGE_KEY = 'localStorage_equipments';
-const SECTORS_STORAGE_KEY = 'localStorage_sectors';
+const db = getFirestore(app);
 
 export default function RelatoriosPage() {
   const { toast } = useToast();
@@ -31,23 +34,33 @@ export default function RelatoriosPage() {
   const [searchTerm, setSearchTerm] = React.useState('');
   const [sectors, setSectors] = React.useState<Sector[]>([]);
   const [allEquipment, setAllEquipment] = React.useState<Equipment[]>([]);
+  const [showNotConferencedOnly, setShowNotConferencedOnly] = React.useState(false);
 
   React.useEffect(() => {
-    const storedSectors = localStorage.getItem(SECTORS_STORAGE_KEY);
-    if (storedSectors) {
-      setSectors(JSON.parse(storedSectors));
-    } else {
-      setSectors(mockSectors); 
-      localStorage.setItem(SECTORS_STORAGE_KEY, JSON.stringify(mockSectors));
-    }
+    // Listen to Sectors
+    const qSectors = collection(db, "sectors");
+    const unsubscribeSectors = onSnapshot(qSectors, (querySnapshot) => {
+        const sectorsData: Sector[] = [];
+        querySnapshot.forEach((doc) => {
+            sectorsData.push({ id: doc.id, ...doc.data() } as Sector);
+        });
+        setSectors(sectorsData);
+    }, (error) => console.error("Error fetching sectors: ", error));
 
-    const storedEquipments = localStorage.getItem(EQUIPMENTS_STORAGE_KEY);
-    if (storedEquipments) {
-      setAllEquipment(JSON.parse(storedEquipments));
-    } else {
-      setAllEquipment(mockEquipment); 
-      localStorage.setItem(EQUIPMENTS_STORAGE_KEY, JSON.stringify(mockEquipment));
-    }
+    // Listen to Equipments
+    const qEquipments = collection(db, "equipments");
+    const unsubscribeEquipments = onSnapshot(qEquipments, (querySnapshot) => {
+        const equipmentsData: Equipment[] = [];
+        querySnapshot.forEach((doc) => {
+            equipmentsData.push({ id: doc.id, ...doc.data() } as Equipment);
+        });
+        setAllEquipment(equipmentsData);
+    }, (error) => console.error("Error fetching equipments: ", error));
+
+    return () => {
+        unsubscribeSectors();
+        unsubscribeEquipments();
+    };
   }, []);
 
   const generateReport = (type: ReportType) => {
@@ -56,29 +69,32 @@ export default function RelatoriosPage() {
     let reportSector: Sector | undefined = undefined;
 
     if (type === 'total') {
-      itemsToReport = [...allEquipment]; // Create a copy to sort
+      itemsToReport = [...allEquipment];
       reportTitle = 'Relatório de Inventário Total';
-    } else if (type === 'bySector' && selectedSectorId) {
-      const sector = sectors.find(s => s.id === selectedSectorId);
-      if (sector) {
-        reportSector = sector;
-        itemsToReport = allEquipment.filter(eq => eq.sectorId === selectedSectorId);
-        reportTitle = `Relatório de Inventário - Setor: ${sector.name}`;
+    } else if (type === 'bySector') {
+      if (selectedSectorId) {
+        const sector = sectors.find(s => s.id === selectedSectorId);
+        if (sector) {
+          reportSector = sector;
+          itemsToReport = allEquipment.filter(eq => eq.sectorId === selectedSectorId);
+          reportTitle = `Relatório de Inventário - Setor: ${sector.name}`;
+        } else {
+          setReportData(null);
+          return;
+        }
       } else {
-        setReportData(null); 
+        setReportData({ type, items: [], title: "Selecione um setor para gerar o relatório." });
         return;
       }
-    } else if (type === 'bySector' && !selectedSectorId) {
-       setReportData({ type, items: [], title: "Selecione um setor para gerar o relatório." });
-       return;
-    } else if (type === 'notConferenced') {
-      itemsToReport = allEquipment.filter(eq => !eq.lastCheckedTimestamp);
-      reportTitle = 'Relatório de Equipamentos Não Conferidos';
+    }
+    
+    if (showNotConferencedOnly) {
+      itemsToReport = itemsToReport.filter(eq => !eq.lastCheckedTimestamp);
+      reportTitle += ' (Apenas Não Conferidos)';
     }
 
     // Sort items: first by sectorName, then by type
     itemsToReport.sort((a, b) => {
-      // Using a very high Unicode character to push undefined/null values to the end
       const sectorNameA = a.sectorName || '\uffff'; 
       const sectorNameB = b.sectorName || '\uffff';
       const typeA = a.type || '\uffff';
@@ -150,13 +166,17 @@ export default function RelatoriosPage() {
                 Visualize e exporte o estado atual do seu inventário.
               </CardDescription>
             </div>
-            <div className="flex flex-col sm:flex-row gap-3 w-full md:w-auto flex-wrap justify-end">
+            <div className="flex flex-col sm:flex-row gap-3 w-full md:w-auto flex-wrap justify-end items-center">
+               <div className="flex items-center space-x-2">
+                <Switch 
+                  id="not-conferenced-switch" 
+                  checked={showNotConferencedOnly}
+                  onCheckedChange={setShowNotConferencedOnly}
+                />
+                <Label htmlFor="not-conferenced-switch" className="cursor-pointer">Apenas não conferidos</Label>
+              </div>
               <Button onClick={() => generateReport('total')} className="w-full sm:w-auto" variant="default">
                 Inventário Total
-              </Button>
-              <Button onClick={() => generateReport('notConferenced')} className="w-full sm:w-auto" variant="outline">
-                <ListX className="mr-2 h-4 w-4" />
-                Não Conferidos
               </Button>
               <div className="flex gap-3 w-full sm:w-auto">
                 <Select onValueChange={setSelectedSectorId} value={selectedSectorId}>
@@ -211,7 +231,6 @@ export default function RelatoriosPage() {
           <CardContent>
             {filteredReportItems.length > 0 ? (
               <div className="overflow-x-auto">
-                {/* Removed print-specific header block */}
                 <Table>
                   <TableHeader>
                     <TableRow>
@@ -220,7 +239,7 @@ export default function RelatoriosPage() {
                       <TableHead className="hidden sm:table-cell print:table-cell">Modelo</TableHead>
                       <TableHead className="hidden md:table-cell print:table-cell">Nº de Série</TableHead>
                       <TableHead>Patrimônio</TableHead>
-                      {(reportData.type === 'total' || reportData.type === 'notConferenced' || reportData.type === 'bySector') && <TableHead>Setor</TableHead>}
+                      <TableHead>Setor</TableHead>
                       <TableHead className="hidden lg:table-cell print:table-cell">Descrição</TableHead>
                        <TableHead className="hidden sm:table-cell print:table-cell">Última Conferência</TableHead>
                     </TableRow>
@@ -233,11 +252,11 @@ export default function RelatoriosPage() {
                         <TableCell className="hidden sm:table-cell print:table-cell max-w-[150px] truncate">{item.model || 'N/A'}</TableCell>
                         <TableCell className="hidden md:table-cell print:table-cell max-w-[150px] truncate">{item.serialNumber || 'N/A'}</TableCell>
                         <TableCell>{item.barcode}</TableCell>
-                        {(reportData.type === 'total' || reportData.type === 'notConferenced' || reportData.type === 'bySector') && <TableCell>{item.sectorName || 'N/A'}</TableCell>}
+                        <TableCell>{item.sectorName || 'N/A'}</TableCell>
                         <TableCell className="hidden lg:table-cell print:table-cell max-w-xs truncate">{item.description || 'N/A'}</TableCell>
                         <TableCell className="hidden sm:table-cell print:table-cell">
                           {item.lastCheckedTimestamp 
-                            ? new Date(item.lastCheckedTimestamp).toLocaleString() 
+                            ? new Date((item.lastCheckedTimestamp as Timestamp).toMillis()).toLocaleString() 
                             : <span className="text-muted-foreground italic">Não conferido</span>}
                         </TableCell>
                       </TableRow>
@@ -247,8 +266,8 @@ export default function RelatoriosPage() {
               </div>
             ) : (
               <p className="text-center text-muted-foreground py-8">
-                {reportData.items.length === 0 && reportData.type === 'notConferenced' ?
-                  "Nenhum equipamento não conferido encontrado." :
+                {reportData.items.length === 0 && showNotConferencedOnly ?
+                  "Nenhum equipamento não conferido encontrado para este filtro." :
                 reportData.items.length === 0 && reportData.type === 'bySector' && reportData.sector ? 
                   `Nenhum equipamento encontrado para o setor "${reportData.sector.name}".` : 
                 reportData.items.length === 0 && reportData.title === "Selecione um setor para gerar o relatório." ?
@@ -266,7 +285,7 @@ export default function RelatoriosPage() {
          <div className="text-center py-12 print:hidden">
             <FileText className="mx-auto h-20 w-20 text-muted-foreground/50 mb-4" />
             <p className="text-lg text-muted-foreground">Selecione um tipo de relatório para começar.</p>
-            <p className="text-sm text-muted-foreground">Você pode gerar um relatório do inventário total, por setor ou listar os não conferidos.</p>
+            <p className="text-sm text-muted-foreground">Você pode gerar um relatório do inventário total ou por setor.</p>
         </div>
       )}
     </div>
@@ -278,4 +297,3 @@ declare module 'react' {
     title?: string;
   }
 }
-

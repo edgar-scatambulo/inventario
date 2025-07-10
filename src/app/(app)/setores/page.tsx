@@ -40,8 +40,11 @@ import { useForm } from 'react-hook-form';
 import * as z from 'zod';
 import { Form, FormControl, FormField, FormItem, FormLabel, FormMessage } from '@/components/ui/form';
 import type { Sector, Equipment } from '@/lib/types';
-import { mockSectors } from '@/lib/mock-data';
 import { useToast } from '@/hooks/use-toast';
+import { getFirestore, collection, addDoc, doc, updateDoc, deleteDoc, onSnapshot, query, where, getDocs } from 'firebase/firestore';
+import { app } from '@/lib/firebase-config';
+
+const db = getFirestore(app);
 
 const sectorFormSchema = z.object({
   name: z.string().min(2, { message: 'Nome do setor deve ter pelo menos 2 caracteres.' }),
@@ -51,7 +54,6 @@ type SectorFormValues = z.infer<typeof sectorFormSchema>;
 
 const SECTORS_STORAGE_KEY = 'localStorage_sectors';
 const EQUIPMENTS_STORAGE_KEY = 'localStorage_equipments';
-
 
 export default function SetoresPage() {
   const { toast } = useToast();
@@ -66,16 +68,27 @@ export default function SetoresPage() {
       name: '',
     },
   });
-
+  
   React.useEffect(() => {
-    const storedSectors = localStorage.getItem(SECTORS_STORAGE_KEY);
-    if (storedSectors) {
-      setSectors(JSON.parse(storedSectors));
-    } else {
-      setSectors(mockSectors);
-      localStorage.setItem(SECTORS_STORAGE_KEY, JSON.stringify(mockSectors));
-    }
-  }, []);
+    const q = collection(db, "sectors");
+    const unsubscribe = onSnapshot(q, (querySnapshot) => {
+      const sectorsData: Sector[] = [];
+      querySnapshot.forEach((doc) => {
+        sectorsData.push({ id: doc.id, ...doc.data() } as Sector);
+      });
+      setSectors(sectorsData);
+      localStorage.setItem(SECTORS_STORAGE_KEY, JSON.stringify(sectorsData));
+    }, (error) => {
+      console.error("Error fetching sectors from Firestore: ", error);
+      toast({
+        variant: "destructive",
+        title: "Erro ao Carregar Setores",
+        description: "Não foi possível buscar os dados dos setores do banco de dados.",
+      });
+    });
+
+    return () => unsubscribe();
+  }, [toast]);
   
   React.useEffect(() => {
     if (editingSector) {
@@ -85,45 +98,52 @@ export default function SetoresPage() {
     }
   }, [editingSector, form, isDialogOpen]);
 
-
-  const handleAddOrUpdateSector = (data: SectorFormValues) => {
-    let updatedSectors: Sector[];
-    if (editingSector) {
-      updatedSectors = sectors.map(sec => (sec.id === editingSector.id ? { ...editingSector, ...data } : sec));
-      toast({ title: 'Sucesso!', description: 'Setor atualizado.' });
-    } else {
-      const newSector: Sector = {
-        id: `sector-${Date.now()}`,
-        ...data,
-      };
-      updatedSectors = [newSector, ...sectors];
-      toast({ title: 'Sucesso!', description: 'Setor adicionado.' });
-    }
-    setSectors(updatedSectors);
-    localStorage.setItem(SECTORS_STORAGE_KEY, JSON.stringify(updatedSectors));
-    setIsDialogOpen(false);
-    setEditingSector(null);
-  };
-
-  const handleDeleteSector = (sectorId: string) => {
-    const equipmentsData = localStorage.getItem(EQUIPMENTS_STORAGE_KEY);
-    const currentEquipments: Equipment[] = equipmentsData ? JSON.parse(equipmentsData) : [];
-    
-    const isSectorInUse = currentEquipments.some(eq => eq.sectorId === sectorId);
-
-    if (isSectorInUse) {
+  const handleAddOrUpdateSector = async (data: SectorFormValues) => {
+    try {
+      if (editingSector) {
+        const sectorRef = doc(db, "sectors", editingSector.id);
+        await updateDoc(sectorRef, data);
+        toast({ title: 'Sucesso!', description: 'Setor atualizado.' });
+      } else {
+        await addDoc(collection(db, "sectors"), data);
+        toast({ title: 'Sucesso!', description: 'Setor adicionado.' });
+      }
+      setIsDialogOpen(false);
+      setEditingSector(null);
+    } catch (error) {
+      console.error("Error saving sector: ", error);
       toast({
         variant: "destructive",
-        title: "Erro ao Excluir Setor",
-        description: "Este setor está atribuído a um ou mais equipamentos. Remova a atribuição antes de excluir.",
+        title: "Erro ao Salvar",
+        description: "Não foi possível salvar o setor no banco de dados.",
       });
-      return;
     }
-    
-    const updatedSectors = sectors.filter(sec => sec.id !== sectorId);
-    setSectors(updatedSectors);
-    localStorage.setItem(SECTORS_STORAGE_KEY, JSON.stringify(updatedSectors));
-    toast({ title: 'Sucesso!', description: 'Setor removido.' });
+  };
+
+  const handleDeleteSector = async (sectorId: string) => {
+    try {
+      const equipmentsQuery = query(collection(db, "equipments"), where("sectorId", "==", sectorId));
+      const querySnapshot = await getDocs(equipmentsQuery);
+
+      if (!querySnapshot.empty) {
+        toast({
+          variant: "destructive",
+          title: "Erro ao Excluir Setor",
+          description: `Este setor está atribuído a ${querySnapshot.size} equipamento(s). Remova a atribuição antes de excluir.`,
+        });
+        return;
+      }
+
+      await deleteDoc(doc(db, "sectors", sectorId));
+      toast({ title: 'Sucesso!', description: 'Setor removido.' });
+    } catch (error) {
+      console.error("Error deleting sector: ", error);
+      toast({
+        variant: "destructive",
+        title: "Erro ao Excluir",
+        description: "Ocorreu um erro ao excluir o setor do banco de dados.",
+      });
+    }
   };
 
   const openEditDialog = (sector: Sector) => {
@@ -248,5 +268,4 @@ export default function SetoresPage() {
     </Card>
   );
 }
-
     

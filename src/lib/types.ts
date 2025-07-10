@@ -1,16 +1,18 @@
 
+import type { Timestamp } from "firebase/firestore";
+
 export interface Equipment {
   id: string;
   name: string; // This is 'Marca' in the UI
-  type?: string; // Novo campo 'Tipo'
+  type?: string; 
   model?: string;
   serialNumber?: string;
   description?: string;
   barcode: string;
-  sectorId?: string;
-  sectorName?: string; // For display purposes
-  lastCheckedTimestamp?: number; // Timestamp of the last successful conference
-  createdAt?: number; // Timestamp of when the equipment was created
+  sectorId?: string | null;
+  sectorName?: string | null; // For display purposes
+  lastCheckedTimestamp?: Timestamp | number; // Can be a Firestore Timestamp or a number from localStorage
+  createdAt?: Timestamp | number; // Can be a Firestore Timestamp or a number from localStorage
 }
 
 export interface Sector {
@@ -18,8 +20,10 @@ export interface Sector {
   name: string;
 }
 
+export type UserRole = 'admin' | 'viewer';
+
 export interface User {
-  id: string;
-  username: string;
-  // For a real app, password would be handled securely on the backend
+  uid: string;
+  email: string | null;
+  role: UserRole;
 }

@@ -43,11 +43,10 @@ import { Form, FormControl, FormField, FormItem, FormLabel, FormMessage } from '
 import { Label } from '@/components/ui/label';
 import { Textarea } from '@/components/ui/textarea';
 import type { Equipment, Sector } from '@/lib/types';
-import { mockEquipment, mockSectors } from '@/lib/mock-data';
 import { useToast } from '@/hooks/use-toast';
 import { cn } from '@/lib/utils';
 import { format } from 'date-fns';
-import { getFirestore, writeBatch, doc, updateDoc, deleteField } from 'firebase/firestore';
+import { getFirestore, writeBatch, doc, updateDoc, deleteDoc, addDoc, collection, onSnapshot, getDoc, query, where, getDocs, deleteField, Timestamp } from 'firebase/firestore';
 import { app } from '@/lib/firebase-config';
 
 const db = getFirestore(app);
@@ -98,21 +97,32 @@ export default function EquipamentosPage() {
   });
 
   React.useEffect(() => {
-    const storedEquipments = localStorage.getItem(EQUIPMENTS_STORAGE_KEY);
-    if (storedEquipments) {
-      setEquipments(JSON.parse(storedEquipments));
-    } else {
-      setEquipments(mockEquipment);
-      localStorage.setItem(EQUIPMENTS_STORAGE_KEY, JSON.stringify(mockEquipment));
-    }
+    // Fetch Sectors
+    const qSectors = collection(db, "sectors");
+    const unsubscribeSectors = onSnapshot(qSectors, (querySnapshot) => {
+        const sectorsData: Sector[] = [];
+        querySnapshot.forEach((doc) => {
+            sectorsData.push({ id: doc.id, ...doc.data() } as Sector);
+        });
+        setSectors(sectorsData);
+        localStorage.setItem(SECTORS_STORAGE_KEY, JSON.stringify(sectorsData));
+    }, (error) => console.error("Error fetching sectors: ", error));
 
-    const storedSectors = localStorage.getItem(SECTORS_STORAGE_KEY);
-    if (storedSectors) {
-      setSectors(JSON.parse(storedSectors));
-    } else {
-      setSectors(mockSectors);
-      localStorage.setItem(SECTORS_STORAGE_KEY, JSON.stringify(mockSectors));
-    }
+    // Fetch Equipments
+    const qEquipments = collection(db, "equipments");
+    const unsubscribeEquipments = onSnapshot(qEquipments, (querySnapshot) => {
+        const equipmentsData: Equipment[] = [];
+        querySnapshot.forEach((doc) => {
+            equipmentsData.push({ id: doc.id, ...doc.data() } as Equipment);
+        });
+        setEquipments(equipmentsData);
+        localStorage.setItem(EQUIPMENTS_STORAGE_KEY, JSON.stringify(equipmentsData));
+    }, (error) => console.error("Error fetching equipments: ", error));
+
+    return () => {
+        unsubscribeSectors();
+        unsubscribeEquipments();
+    };
   }, []);
 
   React.useEffect(() => {
@@ -131,65 +141,59 @@ export default function EquipamentosPage() {
     }
   }, [editingEquipment, form, isFormDialogOpen]);
 
-  const handleAddOrUpdateEquipment = (data: EquipmentFormValues) => {
+  const handleAddOrUpdateEquipment = async (data: EquipmentFormValues) => {
     const finalSectorId = (data.sectorId === NO_SECTOR_VALUE || data.sectorId === '')
                             ? undefined
                             : data.sectorId;
 
-    const sectorName = sectors.find(s => s.id === finalSectorId)?.name;
-    let updatedEquipments: Equipment[];
+    const sector = sectors.find(s => s.id === finalSectorId);
 
-    if (editingEquipment) {
-      updatedEquipments = equipments.map(eq =>
-        eq.id === editingEquipment.id
-        ? { ...editingEquipment, // Keep existing createdAt
-            type: data.type,
-            name: data.name,
-            model: data.model,
-            serialNumber: data.serialNumber,
-            description: data.description,
-            barcode: data.barcode,
-            sectorId: finalSectorId,
-            sectorName
-          }
-        : eq
-      );
-      toast({ title: 'Sucesso!', description: 'Equipamento atualizado.' });
-    } else {
-      if (equipments.some(eq => eq.barcode === data.barcode)) {
-        toast({
-          variant: 'destructive',
-          title: 'Erro ao Adicionar',
-          description: `Equipamento com patrimônio ${data.barcode} já existe.`,
-        });
-        return;
-      }
-      const newEquipment: Equipment = {
-        id: `equip-${Date.now()}`,
-        type: data.type,
-        name: data.name,
-        model: data.model,
-        serialNumber: data.serialNumber,
-        description: data.description,
-        barcode: data.barcode,
-        sectorId: finalSectorId,
-        sectorName,
-        createdAt: Date.now(), // Add createdAt timestamp for new equipment
-      };
-      updatedEquipments = [newEquipment, ...equipments];
-      toast({ title: 'Sucesso!', description: 'Equipamento adicionado.' });
+    const equipmentData = {
+      ...data,
+      sectorId: finalSectorId || null,
+      sectorName: sector?.name || null,
+    };
+    
+    try {
+        if (editingEquipment) {
+            const equipmentRef = doc(db, "equipments", editingEquipment.id);
+            await updateDoc(equipmentRef, {
+                ...equipmentData
+            });
+            toast({ title: 'Sucesso!', description: 'Equipamento atualizado.' });
+        } else {
+            const q = query(collection(db, "equipments"), where("barcode", "==", data.barcode));
+            const querySnapshot = await getDocs(q);
+            if (!querySnapshot.empty) {
+                toast({
+                    variant: 'destructive',
+                    title: 'Erro ao Adicionar',
+                    description: `Equipamento com patrimônio ${data.barcode} já existe.`,
+                });
+                return;
+            }
+            await addDoc(collection(db, "equipments"), {
+              ...equipmentData,
+              createdAt: Timestamp.now()
+            });
+            toast({ title: 'Sucesso!', description: 'Equipamento adicionado.' });
+        }
+        setIsFormDialogOpen(false);
+        setEditingEquipment(null);
+    } catch (error) {
+        console.error("Error saving equipment: ", error);
+        toast({ variant: 'destructive', title: 'Erro ao Salvar', description: 'Não foi possível salvar os dados do equipamento.' });
     }
-    setEquipments(updatedEquipments);
-    localStorage.setItem(EQUIPMENTS_STORAGE_KEY, JSON.stringify(updatedEquipments));
-    setIsFormDialogOpen(false);
-    setEditingEquipment(null);
   };
 
-  const handleDeleteEquipment = (equipmentId: string) => {
-    const updatedEquipments = equipments.filter(eq => eq.id !== equipmentId);
-    setEquipments(updatedEquipments);
-    localStorage.setItem(EQUIPMENTS_STORAGE_KEY, JSON.stringify(updatedEquipments));
-    toast({ title: 'Sucesso!', description: 'Equipamento removido.' });
+  const handleDeleteEquipment = async (equipmentId: string) => {
+    try {
+        await deleteDoc(doc(db, "equipments", equipmentId));
+        toast({ title: 'Sucesso!', description: 'Equipamento removido.' });
+    } catch (error) {
+        console.error("Error deleting equipment: ", error);
+        toast({ variant: 'destructive', title: 'Erro ao Remover', description: 'Não foi possível remover o equipamento.' });
+    }
   };
 
   const openEditDialog = (equipment: Equipment) => {
@@ -255,17 +259,7 @@ export default function EquipamentosPage() {
     try {
       await batch.commit();
   
-      // Update local state after successful Firestore operation
-      const updatedEquipments = equipments.map(eq => {
-        if (equipmentsToUpdate.some(etu => etu.id === eq.id)) {
-          const { lastCheckedTimestamp, ...rest } = eq;
-          return rest;
-        }
-        return eq;
-      });
-  
-      setEquipments(updatedEquipments);
-      localStorage.setItem(EQUIPMENTS_STORAGE_KEY, JSON.stringify(updatedEquipments));
+      // Local state will be updated automatically by onSnapshot
   
       const sectorName = sectorToMarkUnchecked === ALL_SECTORS_VALUE
         ? "todos os setores"
@@ -295,7 +289,7 @@ export default function EquipamentosPage() {
     }
 
     const reader = new FileReader();
-    reader.onload = (e) => {
+    reader.onload = async (e) => {
       const text = e.target?.result as string;
       if (!text) {
         toast({ variant: "destructive", title: "Erro ao ler arquivo", description: "Não foi possível ler o conteúdo do arquivo CSV." });
@@ -323,19 +317,20 @@ export default function EquipamentosPage() {
       }
 
       const dataLines = lines.slice(1);
-      const newEquipmentsFromCSV: Equipment[] = [];
       const errors: string[] = [];
       let importedCount = 0;
       let duplicateCount = 0;
+      const batch = writeBatch(db);
+      const allBarcodesInDB = new Set(equipments.map(eq => eq.barcode));
 
-      dataLines.forEach((line, index) => {
+      for (const [index, line] of dataLines.entries()) {
         const values = line.split(',');
         const rowData: any = {};
         lines[0].split(',').map(h => h.trim()).forEach((col, i) => { 
-          rowData[col] = values[i]?.trim() || '';
+          rowData[col.toLowerCase()] = values[i]?.trim() || '';
         });
         
-        const sectorName = rowData.sectorName;
+        const sectorName = rowData.sectorname;
         let sectorId: string | undefined = undefined;
         let actualSectorNameForEquipment: string | undefined = undefined;
 
@@ -353,7 +348,7 @@ export default function EquipamentosPage() {
           type: rowData.type,
           name: rowData.name,
           model: rowData.model || undefined,
-          serialNumber: rowData.serialNumber || undefined,
+          serialNumber: rowData.serialnumber || undefined,
           description: rowData.description || undefined,
           barcode: rowData.barcode,
           sectorId: sectorId,
@@ -362,39 +357,35 @@ export default function EquipamentosPage() {
         const validationResult = equipmentFormSchema.safeParse(parsedData);
 
         if (validationResult.success) {
-          if (equipments.some(eq => eq.barcode === validationResult.data.barcode) || 
-              newEquipmentsFromCSV.some(eq => eq.barcode === validationResult.data.barcode) ) {
+          if (allBarcodesInDB.has(validationResult.data.barcode)) {
             errors.push(`Linha ${index + 2}: Patrimônio '${validationResult.data.barcode}' já existe e foi ignorado.`);
             duplicateCount++;
           } else {
-            newEquipmentsFromCSV.push({
-              id: `equip-${Date.now()}-${index}`,
+            const newEquipmentData = {
               ...validationResult.data,
               sectorName: actualSectorNameForEquipment,
-              createdAt: Date.now(), // Add createdAt timestamp for imported equipment
-            });
+              createdAt: Timestamp.now(),
+              sectorId: sectorId || null,
+            };
+            const newDocRef = doc(collection(db, "equipments"));
+            batch.set(newDocRef, newEquipmentData);
+            allBarcodesInDB.add(validationResult.data.barcode); // Avoid duplicates within the same file
             importedCount++;
           }
         } else {
           const errorMessages = validationResult.error.errors.map(err => `${err.path.join('.')}: ${err.message}`).join(', ');
           errors.push(`Linha ${index + 2}: ${errorMessages}`);
         }
-      });
+      };
 
-      if (newEquipmentsFromCSV.length > 0) {
-        const updatedEquipments = [...newEquipmentsFromCSV, ...equipments];
-        setEquipments(updatedEquipments);
-        localStorage.setItem(EQUIPMENTS_STORAGE_KEY, JSON.stringify(updatedEquipments));
-      }
-      
       if (importedCount > 0) {
-         toast({ title: 'Importação Concluída!', description: `${importedCount} equipamentos importados com sucesso.` });
+        await batch.commit();
+        toast({ title: 'Importação Concluída!', description: `${importedCount} equipamentos importados com sucesso.` });
       } else if (errors.length === dataLines.length && importedCount === 0 && duplicateCount === 0) {
          toast({ variant: "destructive", title: 'Importação Falhou', description: 'Nenhum equipamento válido encontrado no arquivo CSV.' });
       } else if (importedCount === 0 && (errors.length > 0 || duplicateCount > 0)){
          toast({ variant: "default", title: 'Importação Finalizada', description: 'Nenhum novo equipamento foi adicionado. Verifique os erros.' });
       }
-
 
       if (errors.length > 0) {
         const displayedErrors = errors.slice(0, 5);
@@ -686,7 +677,7 @@ export default function EquipamentosPage() {
                   <TableCell>{equipment.barcode}</TableCell>
                   <TableCell>{equipment.sectorName || 'N/A'}</TableCell>
                   <TableCell className="hidden lg:table-cell">
-                    {equipment.createdAt ? format(new Date(equipment.createdAt), 'dd/MM/yyyy') : 'N/A'}
+                    {equipment.createdAt ? format((equipment.createdAt as Timestamp).toDate(), 'dd/MM/yyyy') : 'N/A'}
                   </TableCell>
                   <TableCell className="hidden lg:table-cell max-w-xs truncate">{equipment.description || 'N/A'}</TableCell>
                   <TableCell className="text-right">
