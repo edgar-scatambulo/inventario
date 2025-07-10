@@ -47,6 +47,10 @@ import { mockEquipment, mockSectors } from '@/lib/mock-data';
 import { useToast } from '@/hooks/use-toast';
 import { cn } from '@/lib/utils';
 import { format } from 'date-fns';
+import { getFirestore, writeBatch, doc, updateDoc, deleteField } from 'firebase/firestore';
+import { app } from '@/lib/firebase-config';
+
+const db = getFirestore(app);
 
 const equipmentTypes = ['Gabinete', 'Impressora', 'Notebook', 'Monitor', 'Switch'];
 
@@ -223,43 +227,65 @@ export default function EquipamentosPage() {
     });
   };
 
-  const handleConfirmMarkAsNotChecked = () => {
+  const handleConfirmMarkAsNotChecked = async () => {
     if (!sectorToMarkUnchecked) {
-      toast({
-        variant: 'destructive',
-        title: 'Seleção Necessária',
-        description: 'Por favor, selecione um setor ou "Todos os Setores".'
-      });
+      toast({ variant: 'destructive', title: 'Seleção Necessária', description: 'Por favor, selecione um setor.' });
       return;
     }
-
-    const updatedEquipments = equipments.map(eq => {
+  
+    const equipmentsToUpdate = equipments.filter(eq => {
       if (sectorToMarkUnchecked === ALL_SECTORS_VALUE) {
-        // eslint-disable-next-line @typescript-eslint/no-unused-vars
-        const { lastCheckedTimestamp, ...rest } = eq;
-        return rest;
+        return !!eq.lastCheckedTimestamp; 
       }
-      if (eq.sectorId === sectorToMarkUnchecked) {
-        // eslint-disable-next-line @typescript-eslint/no-unused-vars
-        const { lastCheckedTimestamp, ...rest } = eq;
-        return rest;
-      }
-      return eq;
+      return eq.sectorId === sectorToMarkUnchecked && !!eq.lastCheckedTimestamp;
     });
-
-    setEquipments(updatedEquipments);
-    localStorage.setItem(EQUIPMENTS_STORAGE_KEY, JSON.stringify(updatedEquipments));
-
-    const sectorName = sectorToMarkUnchecked === ALL_SECTORS_VALUE
-      ? "todos os setores"
-      : sectors.find(s => s.id === sectorToMarkUnchecked)?.name || "setor selecionado";
-
-    toast({
-      title: 'Sucesso!',
-      description: `Equipamentos de ${sectorName} marcados como não conferidos.`
+  
+    if (equipmentsToUpdate.length === 0) {
+      toast({ title: 'Nenhuma Alteração', description: 'Nenhum equipamento conferido para limpar no setor selecionado.' });
+      setIsMarkUncheckedDialogOpen(false);
+      return;
+    }
+  
+    const batch = writeBatch(db);
+    equipmentsToUpdate.forEach(eq => {
+      const equipRef = doc(db, "equipments", eq.id);
+      batch.update(equipRef, { lastCheckedTimestamp: deleteField() });
     });
-    setIsMarkUncheckedDialogOpen(false);
-    setSectorToMarkUnchecked(undefined);
+  
+    try {
+      await batch.commit();
+  
+      // Update local state after successful Firestore operation
+      const updatedEquipments = equipments.map(eq => {
+        if (equipmentsToUpdate.some(etu => etu.id === eq.id)) {
+          const { lastCheckedTimestamp, ...rest } = eq;
+          return rest;
+        }
+        return eq;
+      });
+  
+      setEquipments(updatedEquipments);
+      localStorage.setItem(EQUIPMENTS_STORAGE_KEY, JSON.stringify(updatedEquipments));
+  
+      const sectorName = sectorToMarkUnchecked === ALL_SECTORS_VALUE
+        ? "todos os setores"
+        : sectors.find(s => s.id === sectorToMarkUnchecked)?.name || "setor selecionado";
+  
+      toast({
+        title: 'Sucesso!',
+        description: `Conferência de ${equipmentsToUpdate.length} equipamento(s) de ${sectorName} foi limpa.`,
+      });
+    } catch (error) {
+      console.error("Error clearing conference status: ", error);
+      toast({
+        variant: 'destructive',
+        title: 'Erro ao Limpar Conferências',
+        description: 'Ocorreu um problema ao se comunicar com o banco de dados.',
+      });
+    } finally {
+      setIsMarkUncheckedDialogOpen(false);
+      setSectorToMarkUnchecked(undefined);
+    }
   };
 
   const handleImportCSV = (event: React.ChangeEvent<HTMLInputElement>) => {
