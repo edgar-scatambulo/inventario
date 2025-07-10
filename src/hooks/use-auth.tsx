@@ -6,7 +6,7 @@ import { createContext, useContext, useState, useEffect, ReactNode, useCallback 
 import { useRouter } from 'next/navigation';
 import { getAuth, onAuthStateChanged, signInWithEmailAndPassword, signOut as firebaseSignOut, type User as FirebaseUser } from "firebase/auth";
 import { doc, getDoc, getFirestore } from "firebase/firestore";
-import { app } from '@/lib/firebase-config'; // Import the initialized app
+import { app } from '@/lib/firebase-config';
 
 type FirestoreStatus = 'checking' | 'connected' | 'error';
 
@@ -32,17 +32,12 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   const checkFirestoreConnection = useCallback(async () => {
     setFirestoreStatus('checking');
     try {
-      // Attempt to get a document. We don't care if it exists.
-      // A successful read (even of a non-existent doc) or a 'permission-denied' error 
-      // means we have a connection. A network error means we don't.
       await getDoc(doc(db, "_health_check", "status"));
       setFirestoreStatus('connected');
     } catch (error: any) {
       if (error.code === 'permission-denied') {
-        // If rules are set up correctly, we might get this. It still means we're connected.
         setFirestoreStatus('connected');
       } else {
-        // Other errors (network, config issues) are treated as connection errors.
         console.error("Firestore connection check failed:", error);
         setFirestoreStatus('error');
       }
@@ -67,7 +62,6 @@ export function AuthProvider({ children }: { children: ReactNode }) {
             };
             setUser(appUser);
           } else {
-            // User exists in Auth but not in Firestore users collection
             console.warn("User document not found in Firestore. Logging out.");
             await firebaseSignOut(auth);
             setUser(null);
@@ -90,13 +84,15 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     if (!password) {
       throw new Error("Password is required.");
     }
+    // onAuthStateChanged will handle setting the user state upon successful login
     await signInWithEmailAndPassword(auth, email, password);
-    // onAuthStateChanged will handle setting the user and loading state
   }, []);
 
   const logout = useCallback(async () => {
     try {
       await firebaseSignOut(auth);
+      // The onAuthStateChanged listener will set user to null
+      // The redirector components will handle pushing to /login
       router.push('/login');
     } catch (error) {
       console.error("Error signing out: ", error);
