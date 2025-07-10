@@ -15,6 +15,45 @@ import { LogOut, UserCircle } from 'lucide-react';
 import { useAuth } from '@/hooks/use-auth';
 import { usePathname } from 'next/navigation';
 import { navItemsMap } from './nav-items-map';
+import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/components/ui/tooltip';
+import { cn } from '@/lib/utils';
+
+function FirestoreStatusIndicator() {
+  const { firestoreStatus } = useAuth();
+
+  const statusConfig = {
+    checking: {
+      color: 'bg-yellow-500',
+      label: 'Verificando conexão...',
+    },
+    connected: {
+      color: 'bg-green-500',
+      label: 'Conectado ao Firestore',
+    },
+    error: {
+      color: 'bg-red-500',
+      label: 'Erro de conexão com o Firestore',
+    },
+  };
+
+  const { color, label } = statusConfig[firestoreStatus];
+
+  return (
+     <TooltipProvider>
+      <Tooltip>
+        <TooltipTrigger asChild>
+          <div className="relative flex h-3 w-3">
+             {firestoreStatus === 'checking' && <span className={cn("animate-ping absolute inline-flex h-full w-full rounded-full opacity-75", color)}></span>}
+            <span className={cn("relative inline-flex rounded-full h-3 w-3", color)}></span>
+          </div>
+        </TooltipTrigger>
+        <TooltipContent>
+          <p>{label}</p>
+        </TooltipContent>
+      </Tooltip>
+    </TooltipProvider>
+  );
+}
 
 
 export function Header() {
@@ -36,14 +75,15 @@ export function Header() {
       </div>
       <h1 className="text-xl font-semibold text-foreground">{getPageTitle()}</h1>
       <div className="ml-auto flex items-center gap-4">
+        <FirestoreStatusIndicator />
         {user && (
           <DropdownMenu>
             <DropdownMenuTrigger asChild>
               <Button variant="ghost" className="relative h-10 w-10 rounded-full">
                 <Avatar className="h-10 w-10 border">
-                  <AvatarImage src={`https://avatar.vercel.sh/${user.username}.png`} alt={user.username} data-ai-hint="user avatar" />
+                  <AvatarImage src={`https://avatar.vercel.sh/${user.email}.png`} alt={user.email ?? ''} data-ai-hint="user avatar" />
                   <AvatarFallback>
-                    {user.username ? user.username.substring(0, 2).toUpperCase() : <UserCircle />}
+                    {user.email ? user.email.substring(0, 2).toUpperCase() : <UserCircle />}
                   </AvatarFallback>
                 </Avatar>
               </Button>
@@ -52,10 +92,10 @@ export function Header() {
               <DropdownMenuLabel className="font-normal">
                 <div className="flex flex-col space-y-1">
                   <p className="text-sm font-medium leading-none text-foreground">
-                    {user.username}
+                    {user.email}
                   </p>
                   <p className="text-xs leading-none text-muted-foreground">
-                    Usuário
+                    {user.role === 'admin' ? 'Administrador' : 'Visualizador'}
                   </p>
                 </div>
               </DropdownMenuLabel>
