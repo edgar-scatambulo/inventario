@@ -7,13 +7,17 @@ import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import type { Equipment } from '@/lib/types';
-import { mockEquipment } from '@/lib/mock-data';
 import { useToast } from '@/hooks/use-toast';
+import { getFirestore, doc, getDoc, writeBatch, serverTimestamp, Timestamp } from "firebase/firestore";
+import { app } from '@/lib/firebase-config';
+import { useAuth } from '@/hooks/use-auth';
 
 const EQUIPMENTS_STORAGE_KEY = 'localStorage_equipments';
+const db = getFirestore(app);
 
 export default function ConferenciaPage() {
   const { toast } = useToast();
+  const { user } = useAuth();
   const [allEquipment, setAllEquipment] = React.useState<Equipment[]>([]);
   const [barcode, setBarcode] = React.useState('');
   const [checkedEquipment, setCheckedEquipment] = React.useState<Equipment | null | 'not_found'>(null);
@@ -21,12 +25,19 @@ export default function ConferenciaPage() {
   const inputRef = React.useRef<HTMLInputElement>(null);
 
   React.useEffect(() => {
+    // This component still uses localStorage as a cache for quick barcode lookups.
+    // The source of truth for updates is Firestore.
     const storedEquipments = localStorage.getItem(EQUIPMENTS_STORAGE_KEY);
     if (storedEquipments) {
       setAllEquipment(JSON.parse(storedEquipments));
     } else {
-      setAllEquipment(mockEquipment);
-      localStorage.setItem(EQUIPMENTS_STORAGE_KEY, JSON.stringify(mockEquipment));
+      // In a real scenario, you might fetch from Firestore here if cache is empty.
+      // For now, we rely on the equipments page to populate the cache.
+      toast({
+        title: "Cache de Equipamentos Vazio",
+        description: "Visite a página de Equipamentos para popular os dados locais.",
+        variant: "default"
+      });
     }
   }, []);
 
@@ -40,41 +51,85 @@ export default function ConferenciaPage() {
       });
       return;
     }
+    if (!user) {
+        toast({
+        variant: 'destructive',
+        title: 'Usuário não autenticado',
+        description: 'Por favor, faça login para conferir equipamentos.',
+      });
+      return;
+    }
 
     setIsLoading(true);
     setCheckedEquipment(null);
-    await new Promise(resolve => setTimeout(resolve, 700));
+    await new Promise(resolve => setTimeout(resolve, 500)); // Simulate network latency
 
-    const foundEquipment = allEquipment.find(eq => eq.barcode === barcode.trim());
+    const foundEquipmentInCache = allEquipment.find(eq => eq.barcode === barcode.trim());
 
-    if (foundEquipment) {
-      const now = Date.now();
-      const updatedEquipments = allEquipment.map(eq =>
-        eq.id === foundEquipment.id
-          ? { ...eq, lastCheckedTimestamp: now }
-          : eq
-      );
-      setAllEquipment(updatedEquipments);
-      localStorage.setItem(EQUIPMENTS_STORAGE_KEY, JSON.stringify(updatedEquipments));
+    if (foundEquipmentInCache) {
+      try {
+        const batch = writeBatch(db);
+        const conferenceTimestamp = Date.now();
 
-      setCheckedEquipment({ ...foundEquipment, lastCheckedTimestamp: now });
-      toast({
-        title: 'Equipamento Conferido!',
-        description: `${foundEquipment.type || ''} ${foundEquipment.name} localizado no setor ${foundEquipment.sectorName || 'N/A'}. Conferência registrada.`,
-        className: 'bg-green-100 border-green-500 text-green-700 dark:bg-green-900 dark:text-green-200 dark:border-green-700',
-      });
+        // 1. Update the equipment document
+        const equipmentRef = doc(db, "equipments", foundEquipmentInCache.id);
+        batch.update(equipmentRef, { lastCheckedTimestamp: conferenceTimestamp });
+
+        // 2. Create a new document in the 'conferences' collection
+        const conferenceRef = doc(db, "conferences", `${foundEquipmentInCache.id}-${conferenceTimestamp}`);
+        batch.set(conferenceRef, {
+          equipmentId: foundEquipmentInCache.id,
+          barcode: foundEquipmentInCache.barcode,
+          equipmentName: foundEquipmentInCache.name,
+          equipmentType: foundEquipmentInCache.type || 'N/A',
+          sectorId: foundEquipmentInCache.sectorId || null,
+          sectorName: foundEquipmentInCache.sectorName || 'Não atribuído',
+          userId: user.uid,
+          userEmail: user.email,
+          timestamp: Timestamp.fromMillis(conferenceTimestamp),
+        });
+
+        await batch.commit();
+
+        // Update local state and localStorage cache
+        const updatedEquipments = allEquipment.map(eq =>
+          eq.id === foundEquipmentInCache.id
+            ? { ...eq, lastCheckedTimestamp: conferenceTimestamp }
+            : eq
+        );
+        setAllEquipment(updatedEquipments);
+        localStorage.setItem(EQUIPMENTS_STORAGE_KEY, JSON.stringify(updatedEquipments));
+
+        setCheckedEquipment({ ...foundEquipmentInCache, lastCheckedTimestamp: conferenceTimestamp });
+        toast({
+          title: 'Equipamento Conferido!',
+          description: `${foundEquipmentInCache.type || ''} ${foundEquipmentInCache.name} localizado no setor ${foundEquipmentInCache.sectorName || 'N/A'}. Conferência registrada com sucesso.`,
+          className: 'bg-green-100 border-green-500 text-green-700 dark:bg-green-900 dark:text-green-200 dark:border-green-700',
+        });
+
+      } catch (error) {
+        console.error("Error committing conference to Firestore: ", error);
+        toast({
+          variant: 'destructive',
+          title: 'Erro no Servidor',
+          description: 'Não foi possível registrar a conferência. Verifique sua conexão e as permissões do Firestore.',
+        });
+      }
+
     } else {
       setCheckedEquipment('not_found');
       toast({
         variant: 'destructive',
         title: 'Não Encontrado',
-        description: 'Nenhum equipamento encontrado com este código de barras.',
+        description: 'Nenhum equipamento encontrado com este código de barras no cache local.',
       });
     }
+
     setIsLoading(false);
-    setBarcode(''); 
+    setBarcode('');
     inputRef.current?.focus();
   };
+
 
   const handleReset = () => {
     setBarcode('');
@@ -106,7 +161,7 @@ export default function ConferenciaPage() {
                 aria-label="Código de Barras"
               />
             </div>
-            <Button type="submit" className="w-full sm:w-auto h-12 text-base" disabled={isLoading}>
+            <Button type="submit" className="w-full sm:w-auto h-12 text-base" disabled={isLoading || !user}>
               {isLoading ? (
                 <>
                   <RotateCcw className="mr-2 h-5 w-5 animate-spin" /> Verificando...
@@ -122,7 +177,7 @@ export default function ConferenciaPage() {
           {isLoading && (
             <div className="text-center p-6">
               <RotateCcw className="mx-auto h-10 w-10 animate-spin text-primary" />
-              <p className="mt-2 text-muted-foreground">Procurando equipamento...</p>
+              <p className="mt-2 text-muted-foreground">Procurando equipamento e registrando...</p>
             </div>
           )}
           
