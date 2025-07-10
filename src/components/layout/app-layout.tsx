@@ -53,7 +53,7 @@ export default function AppLayout({ children }: { children: React.ReactNode }) {
         </SidebarContent>
         <SidebarFooter className="p-4 group-data-[collapsible=icon]:hidden">
           <p className="text-xs text-muted-foreground">
-            &copy; {new Date().getFullYear()} Controle de Inventário
+            Controle de Inventário - Scatambulo
           </p>
         </SidebarFooter>
       </Sidebar>
@@ -66,4 +66,3 @@ export default function AppLayout({ children }: { children: React.ReactNode }) {
     </SidebarProvider>
   );
 }
-
