@@ -70,6 +70,25 @@ const SECTORS_STORAGE_KEY = 'localStorage_sectors';
 const NO_SECTOR_VALUE = "NO_SECTOR_ASSIGNED_VALUE";
 const ALL_SECTORS_VALUE = "--ALL_SECTORS--";
 
+// Helper function to safely convert a Firestore Timestamp or a number to a Date
+const toSafeDate = (timestamp: any): Date | null => {
+  if (!timestamp) return null;
+  if (typeof timestamp.toMillis === 'function') { // It's a Firestore Timestamp
+    return new Date(timestamp.toMillis());
+  }
+  if (typeof timestamp === 'number') { // It's a number from localStorage
+    return new Date(timestamp);
+  }
+  if (timestamp instanceof Date) { // It's already a Date object
+      return timestamp;
+  }
+  // Try to parse from object { seconds, nanoseconds } if it comes from stringified JSON
+  if (typeof timestamp === 'object' && 'seconds' in timestamp && 'nanoseconds' in timestamp) {
+      return new Date(timestamp.seconds * 1000 + timestamp.nanoseconds / 1000000);
+  }
+  return null; // Or handle as an error
+};
+
 export default function EquipamentosPage() {
   const { toast } = useToast();
   const [equipments, setEquipments] = React.useState<Equipment[]>([]);
@@ -113,7 +132,14 @@ export default function EquipamentosPage() {
     const unsubscribeEquipments = onSnapshot(qEquipments, (querySnapshot) => {
         const equipmentsData: Equipment[] = [];
         querySnapshot.forEach((doc) => {
-            equipmentsData.push({ id: doc.id, ...doc.data() } as Equipment);
+            const data = doc.data();
+            equipmentsData.push({ 
+                id: doc.id, 
+                ...data,
+                // Ensure timestamps are numbers for JSON serialization
+                createdAt: data.createdAt?.toMillis ? data.createdAt.toMillis() : data.createdAt,
+                lastCheckedTimestamp: data.lastCheckedTimestamp?.toMillis ? data.lastCheckedTimestamp.toMillis() : data.lastCheckedTimestamp,
+            } as Equipment);
         });
         setEquipments(equipmentsData);
         localStorage.setItem(EQUIPMENTS_STORAGE_KEY, JSON.stringify(equipmentsData));
@@ -677,7 +703,10 @@ export default function EquipamentosPage() {
                   <TableCell>{equipment.barcode}</TableCell>
                   <TableCell>{equipment.sectorName || 'N/A'}</TableCell>
                   <TableCell className="hidden lg:table-cell">
-                    {equipment.createdAt ? format((equipment.createdAt as Timestamp).toDate(), 'dd/MM/yyyy') : 'N/A'}
+                    {(() => {
+                      const date = toSafeDate(equipment.createdAt);
+                      return date ? format(date, 'dd/MM/yyyy') : 'N/A';
+                    })()}
                   </TableCell>
                   <TableCell className="hidden lg:table-cell max-w-xs truncate">{equipment.description || 'N/A'}</TableCell>
                   <TableCell className="text-right">

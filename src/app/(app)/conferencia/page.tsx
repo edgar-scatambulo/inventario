@@ -15,6 +15,25 @@ import { useAuth } from '@/hooks/use-auth';
 const EQUIPMENTS_STORAGE_KEY = 'localStorage_equipments';
 const db = getFirestore(app);
 
+// Helper function to safely convert a Firestore Timestamp or a number to a Date
+const toSafeDate = (timestamp: any): Date | null => {
+  if (!timestamp) return null;
+  if (typeof timestamp.toMillis === 'function') { // It's a Firestore Timestamp
+    return new Date(timestamp.toMillis());
+  }
+  if (typeof timestamp === 'number') { // It's a number from localStorage
+    return new Date(timestamp);
+  }
+  if (timestamp instanceof Date) { // It's already a Date object
+      return timestamp;
+  }
+  // Try to parse from object { seconds, nanoseconds } if it comes from stringified JSON
+  if (typeof timestamp === 'object' && 'seconds' in timestamp && 'nanoseconds' in timestamp) {
+      return new Date(timestamp.seconds * 1000 + timestamp.nanoseconds / 1000000);
+  }
+  return null; // Or handle as an error
+};
+
 export default function ConferenciaPage() {
   const { toast } = useToast();
   const { user } = useAuth();
@@ -30,7 +49,14 @@ export default function ConferenciaPage() {
     const unsubscribe = onSnapshot(q, (querySnapshot) => {
         const equipmentsData: Equipment[] = [];
         querySnapshot.forEach((doc) => {
-            equipmentsData.push({ id: doc.id, ...doc.data() } as Equipment);
+            const data = doc.data();
+            equipmentsData.push({ 
+                id: doc.id, 
+                ...data,
+                // Ensure timestamps are numbers for JSON serialization
+                createdAt: data.createdAt?.toMillis ? data.createdAt.toMillis() : data.createdAt,
+                lastCheckedTimestamp: data.lastCheckedTimestamp?.toMillis ? data.lastCheckedTimestamp.toMillis() : data.lastCheckedTimestamp,
+            } as Equipment);
         });
         setAllEquipment(equipmentsData);
         // Also update localStorage for quick lookups
@@ -208,7 +234,12 @@ export default function ConferenciaPage() {
                   <div><strong>Patrimônio:</strong> {checkedEquipment.barcode}</div>
                   <div><strong>Setor:</strong> {checkedEquipment.sectorName || 'Não atribuído'}</div>
                   {checkedEquipment.lastCheckedTimestamp && (
-                     <div><strong>Última Conferência:</strong> {new Date(checkedEquipment.lastCheckedTimestamp).toLocaleString()}</div>
+                     <div>
+                        <strong>Última Conferência:</strong> {(() => {
+                           const date = toSafeDate(checkedEquipment.lastCheckedTimestamp);
+                           return date ? date.toLocaleString() : 'N/A';
+                        })()}
+                     </div>
                   )}
                 </div>
               )}

@@ -14,7 +14,7 @@ import {
   ChartTooltipContent,
   type ChartConfig
 } from "@/components/ui/chart";
-import { getFirestore, collection, onSnapshot } from 'firebase/firestore';
+import { getFirestore, collection, onSnapshot, Timestamp } from 'firebase/firestore';
 import { app } from '@/lib/firebase-config';
 import { useToast } from '@/hooks/use-toast';
 
@@ -60,9 +60,11 @@ const equipmentsBySectorChartConfig = {
   },
 } satisfies ChartConfig;
 
-const isTimestampToday = (timestamp?: number): boolean => {
+const isTimestampToday = (timestamp: any): boolean => {
   if (!timestamp) return false;
-  const date = new Date(timestamp);
+  // Handle both Firestore Timestamps and numbers (from localStorage)
+  const millis = typeof timestamp.toMillis === 'function' ? timestamp.toMillis() : timestamp;
+  const date = new Date(millis);
   const today = new Date();
   return (
     date.getDate() === today.getDate() &&
@@ -107,9 +109,7 @@ export default function DashboardPage() {
         equipments.forEach(eq => {
             if (eq.lastCheckedTimestamp) {
                 totalOverallConferenced++;
-                // Firestore Timestamps are objects, so we need to convert to milliseconds
-                const timestampInMillis = typeof eq.lastCheckedTimestamp === 'object' && eq.lastCheckedTimestamp.toMillis ? eq.lastCheckedTimestamp.toMillis() : eq.lastCheckedTimestamp;
-                if (isTimestampToday(timestampInMillis)) {
+                if (isTimestampToday(eq.lastCheckedTimestamp)) {
                     checkedToday++;
                 }
             } else {
