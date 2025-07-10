@@ -45,9 +45,9 @@ export function SidebarNav() {
     <SidebarMenu>
       {navItems.map((item) => (
         <SidebarMenuItem key={item.label}>
-          <Link href={item.href}>
+          <Link href={item.href} legacyBehavior passHref>
             <SidebarMenuButton
-              asChild
+              as="a"
               isActive={pathname === item.href || (item.href !== '/dashboard' && pathname.startsWith(item.href))}
               tooltip={item.label}
               aria-label={item.label}
@@ -56,10 +56,9 @@ export function SidebarNav() {
                 "group-data-[collapsible=icon]:justify-center"
               )}
             >
-              {/* A tag <a> foi removida daqui. Link com asChild cuidará disso. */}
-              <span>
-                <span className="group-data-[collapsible=icon]:hidden">{item.label}</span>
+              <span className="flex items-center gap-2">
                 <item.icon />
+                <span className="group-data-[collapsible=icon]:hidden">{item.label}</span>
               </span>
             </SidebarMenuButton>
           </Link>
