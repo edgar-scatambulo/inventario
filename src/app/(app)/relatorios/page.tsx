@@ -2,7 +2,7 @@
 "use client";
 
 import * as React from 'react';
-import { FileText, Download, Filter, Search, Building, ListX, Printer } from 'lucide-react';
+import { FileText, Download, Filter, Search, Building, ListX, Printer, Sigma } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
@@ -146,6 +146,27 @@ export default function RelatoriosPage() {
     (item.description && item.description.toLowerCase().includes(searchTerm.toLowerCase()))
   ) || [];
 
+  const summaryByType = React.useMemo(() => {
+    if (filteredReportItems.length === 0) {
+      return {};
+    }
+    const summary = filteredReportItems.reduce((acc, item) => {
+      const type = item.type || 'Não Especificado';
+      acc[type] = (acc[type] || 0) + 1;
+      return acc;
+    }, {} as Record<string, number>);
+    
+    // Sort the summary object by type name
+    return Object.keys(summary).sort().reduce(
+      (obj, key) => { 
+        obj[key] = summary[key]; 
+        return obj;
+      }, 
+      {} as Record<string, number>
+    );
+
+  }, [filteredReportItems]);
+
   const handleExportClick = () => {
     if (filteredReportItems.length === 0) {
       toast({
@@ -256,41 +277,68 @@ export default function RelatoriosPage() {
           </CardHeader>
           <CardContent>
             {filteredReportItems.length > 0 ? (
-              <div className="overflow-x-auto">
-                <Table>
-                  <TableHeader>
-                    <TableRow>
-                      <TableHead>Tipo</TableHead>
-                      <TableHead>Marca</TableHead>
-                      <TableHead className="hidden sm:table-cell print:table-cell">Modelo</TableHead>
-                      <TableHead className="hidden md:table-cell print:table-cell">Nº de Série</TableHead>
-                      <TableHead>Patrimônio</TableHead>
-                      <TableHead>Setor</TableHead>
-                      <TableHead className="hidden lg:table-cell print:table-cell">Descrição</TableHead>
-                       <TableHead className="hidden sm:table-cell print:table-cell">Última Conferência</TableHead>
-                    </TableRow>
-                  </TableHeader>
-                  <TableBody>
-                    {filteredReportItems.map(item => (
-                      <TableRow key={item.id}>
-                        <TableCell>{item.type || 'N/A'}</TableCell>
-                        <TableCell className="font-medium">{item.name}</TableCell>
-                        <TableCell className="hidden sm:table-cell print:table-cell max-w-[150px] truncate">{item.model || 'N/A'}</TableCell>
-                        <TableCell className="hidden md:table-cell print:table-cell max-w-[150px] truncate">{item.serialNumber || 'N/A'}</TableCell>
-                        <TableCell>{item.barcode}</TableCell>
-                        <TableCell>{item.sectorName || 'N/A'}</TableCell>
-                        <TableCell className="hidden lg:table-cell print:table-cell max-w-xs truncate">{item.description || 'N/A'}</TableCell>
-                        <TableCell className="hidden sm:table-cell print:table-cell">
-                          {(() => {
-                            const date = toSafeDate(item.lastCheckedTimestamp);
-                            return date ? date.toLocaleString() : <span className="text-muted-foreground italic">Não conferido</span>;
-                          })()}
-                        </TableCell>
+              <>
+                <div className="overflow-x-auto">
+                  <Table>
+                    <TableHeader>
+                      <TableRow>
+                        <TableHead>Tipo</TableHead>
+                        <TableHead>Marca</TableHead>
+                        <TableHead className="hidden sm:table-cell print:table-cell">Modelo</TableHead>
+                        <TableHead className="hidden md:table-cell print:table-cell">Nº de Série</TableHead>
+                        <TableHead>Patrimônio</TableHead>
+                        <TableHead>Setor</TableHead>
+                        <TableHead className="hidden lg:table-cell print:table-cell">Descrição</TableHead>
+                        <TableHead className="hidden sm:table-cell print:table-cell">Última Conferência</TableHead>
                       </TableRow>
-                    ))}
-                  </TableBody>
-                </Table>
-              </div>
+                    </TableHeader>
+                    <TableBody>
+                      {filteredReportItems.map(item => (
+                        <TableRow key={item.id}>
+                          <TableCell>{item.type || 'N/A'}</TableCell>
+                          <TableCell className="font-medium">{item.name}</TableCell>
+                          <TableCell className="hidden sm:table-cell print:table-cell max-w-[150px] truncate">{item.model || 'N/A'}</TableCell>
+                          <TableCell className="hidden md:table-cell print:table-cell max-w-[150px] truncate">{item.serialNumber || 'N/A'}</TableCell>
+                          <TableCell>{item.barcode}</TableCell>
+                          <TableCell>{item.sectorName || 'N/A'}</TableCell>
+                          <TableCell className="hidden lg:table-cell print:table-cell max-w-xs truncate">{item.description || 'N/A'}</TableCell>
+                          <TableCell className="hidden sm:table-cell print:table-cell">
+                            {(() => {
+                              const date = toSafeDate(item.lastCheckedTimestamp);
+                              return date ? date.toLocaleString() : <span className="text-muted-foreground italic">Não conferido</span>;
+                            })()}
+                          </TableCell>
+                        </TableRow>
+                      ))}
+                    </TableBody>
+                  </Table>
+                </div>
+                <Card className="mt-6">
+                  <CardHeader>
+                    <CardTitle className="flex items-center text-lg">
+                      <Sigma className="mr-2 h-5 w-5" />
+                      Resumo do Relatório
+                    </CardTitle>
+                  </CardHeader>
+                  <CardContent>
+                    <div className="space-y-2">
+                      <div className="flex justify-between font-bold text-base border-b pb-2">
+                        <span>Total Geral de Equipamentos:</span>
+                        <span>{filteredReportItems.length}</span>
+                      </div>
+                      <div className="space-y-1 pt-2">
+                        <h4 className="font-semibold text-md mb-1">Totais por Tipo:</h4>
+                        {Object.entries(summaryByType).map(([type, count]) => (
+                          <div key={type} className="flex justify-between text-sm pl-4">
+                            <span className="text-muted-foreground">{type}:</span>
+                            <span>{count}</span>
+                          </div>
+                        ))}
+                      </div>
+                    </div>
+                  </CardContent>
+                </Card>
+              </>
             ) : (
               <p className="text-center text-muted-foreground py-8">
                 {reportData.items.length === 0 && showNotConferencedOnly ?
@@ -324,3 +372,5 @@ declare module 'react' {
     title?: string;
   }
 }
+
+    
