@@ -24,28 +24,31 @@ import { cn } from '@/lib/utils';
 import { useAuth } from '@/hooks/use-auth';
 
 const navItems = [
-  { href: '/dashboard', label: 'Dashboard', icon: LayoutDashboard },
-  { href: '/equipamentos', label: 'Equipamentos', icon: Package },
-  { href: '/setores', label: 'Setores', icon: Warehouse },
-  { href: '/conferencia', label: 'Conferência', icon: ScanBarcode },
-  { href: '/relatorios', label: 'Relatórios', icon: FileText },
-  // { href: '/usuarios', label: 'Usuários', icon: Users }, // Future feature
-  // { href: '/configuracoes', label: 'Configurações', icon: Settings }, // Future feature
+  { href: '/dashboard', label: 'Dashboard', icon: LayoutDashboard, adminOnly: false },
+  { href: '/equipamentos', label: 'Equipamentos', icon: Package, adminOnly: false },
+  { href: '/setores', label: 'Setores', icon: Warehouse, adminOnly: false },
+  { href: '/conferencia', label: 'Conferência', icon: ScanBarcode, adminOnly: false },
+  { href: '/relatorios', label: 'Relatórios', icon: FileText, adminOnly: false },
+  // { href: '/usuarios', label: 'Usuários', icon: Users, adminOnly: true },
+  // { href: '/configuracoes', label: 'Configurações', icon: Settings, adminOnly: true },
 ];
 
 export function SidebarNav() {
   const pathname = usePathname();
   const { user } = useAuth();
+  const isAdmin = user?.role === 'admin';
 
   if (!user) {
     return null;
   }
 
+  const accessibleNavItems = navItems.filter(item => !item.adminOnly || isAdmin);
+
   return (
     <SidebarMenu>
-      {navItems.map((item) => (
+      {accessibleNavItems.map((item) => (
         <SidebarMenuItem key={item.label}>
-          <SidebarMenuButton
+           <SidebarMenuButton
             asChild
             isActive={pathname === item.href || (item.href !== '/dashboard' && pathname.startsWith(item.href))}
             tooltip={item.label}

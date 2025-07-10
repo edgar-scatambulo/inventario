@@ -2,7 +2,7 @@
 "use client";
 
 import * as React from 'react';
-import { ScanBarcode, CheckCircle2, XCircle, Search, RotateCcw } from 'lucide-react';
+import { ScanBarcode, CheckCircle2, XCircle, Search, RotateCcw, Lock } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
@@ -11,6 +11,7 @@ import { useToast } from '@/hooks/use-toast';
 import { getFirestore, doc, getDoc, writeBatch, serverTimestamp, Timestamp, collection, onSnapshot } from "firebase/firestore";
 import { app } from '@/lib/firebase-config';
 import { useAuth } from '@/hooks/use-auth';
+import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert';
 
 const EQUIPMENTS_STORAGE_KEY = 'localStorage_equipments';
 const db = getFirestore(app);
@@ -37,6 +38,7 @@ const toSafeDate = (timestamp: any): Date | null => {
 export default function ConferenciaPage() {
   const { toast } = useToast();
   const { user } = useAuth();
+  const isAdmin = user?.role === 'admin';
   const [allEquipment, setAllEquipment] = React.useState<Equipment[]>([]);
   const [barcode, setBarcode] = React.useState('');
   const [checkedEquipment, setCheckedEquipment] = React.useState<Equipment | null | 'not_found'>(null);
@@ -76,6 +78,10 @@ export default function ConferenciaPage() {
 
   const handleCheckBarcode = async (e?: React.FormEvent<HTMLFormElement>) => {
     e?.preventDefault();
+    if (!isAdmin) {
+      toast({ variant: 'destructive', title: 'Acesso Negado', description: 'Você não tem permissão para realizar esta ação.' });
+      return;
+    }
     if (!barcode.trim()) {
       toast({
         variant: 'destructive',
@@ -176,6 +182,15 @@ export default function ConferenciaPage() {
           </CardDescription>
         </CardHeader>
         <CardContent className="space-y-6">
+          {!isAdmin && (
+            <Alert variant="destructive">
+              <Lock className="h-4 w-4" />
+              <AlertTitle>Acesso Restrito</AlertTitle>
+              <AlertDescription>
+                Apenas administradores podem registrar conferências de inventário.
+              </AlertDescription>
+            </Alert>
+          )}
           <form onSubmit={handleCheckBarcode} className="flex flex-col sm:flex-row items-start gap-3">
             <div className="w-full flex-grow">
               <Input
@@ -186,9 +201,10 @@ export default function ConferenciaPage() {
                 onChange={(e) => setBarcode(e.target.value)}
                 className="h-12 text-lg focus:ring-2 focus:ring-primary"
                 aria-label="Código de Barras"
+                disabled={!isAdmin}
               />
             </div>
-            <Button type="submit" className="w-full sm:w-auto h-12 text-base" disabled={isLoading || !user}>
+            <Button type="submit" className="w-full sm:w-auto h-12 text-base" disabled={isLoading || !user || !isAdmin}>
               {isLoading ? (
                 <>
                   <RotateCcw className="mr-2 h-5 w-5 animate-spin" /> Verificando...
@@ -243,7 +259,7 @@ export default function ConferenciaPage() {
                   )}
                 </div>
               )}
-               <Button onClick={handleReset} variant="outline" className="w-full mt-6">
+               <Button onClick={handleReset} variant="outline" className="w-full mt-6" disabled={!isAdmin}>
                 <RotateCcw className="mr-2 h-4 w-4" /> Nova Conferência
               </Button>
             </Card>

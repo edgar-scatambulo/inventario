@@ -2,7 +2,7 @@
 "use client";
 
 import * as React from 'react';
-import { PlusCircle, Edit, Trash2, Search } from 'lucide-react';
+import { PlusCircle, Edit, Trash2, Search, Lock } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import {
   Table,
@@ -43,6 +43,7 @@ import type { Sector, Equipment } from '@/lib/types';
 import { useToast } from '@/hooks/use-toast';
 import { getFirestore, collection, addDoc, doc, updateDoc, deleteDoc, onSnapshot, query, where, getDocs } from 'firebase/firestore';
 import { app } from '@/lib/firebase-config';
+import { useAuth } from '@/hooks/use-auth';
 
 const db = getFirestore(app);
 
@@ -57,6 +58,8 @@ const EQUIPMENTS_STORAGE_KEY = 'localStorage_equipments';
 
 export default function SetoresPage() {
   const { toast } = useToast();
+  const { user } = useAuth();
+  const isAdmin = user?.role === 'admin';
   const [sectors, setSectors] = React.useState<Sector[]>([]);
   const [isDialogOpen, setIsDialogOpen] = React.useState(false);
   const [editingSector, setEditingSector] = React.useState<Sector | null>(null);
@@ -99,6 +102,10 @@ export default function SetoresPage() {
   }, [editingSector, form, isDialogOpen]);
 
   const handleAddOrUpdateSector = async (data: SectorFormValues) => {
+    if (!isAdmin) {
+      toast({ variant: 'destructive', title: 'Acesso Negado', description: 'Você não tem permissão para realizar esta ação.' });
+      return;
+    }
     try {
       if (editingSector) {
         const sectorRef = doc(db, "sectors", editingSector.id);
@@ -121,6 +128,10 @@ export default function SetoresPage() {
   };
 
   const handleDeleteSector = async (sectorId: string) => {
+     if (!isAdmin) {
+      toast({ variant: 'destructive', title: 'Acesso Negado', description: 'Você não tem permissão para realizar esta ação.' });
+      return;
+    }
     try {
       const equipmentsQuery = query(collection(db, "equipments"), where("sectorId", "==", sectorId));
       const querySnapshot = await getDocs(equipmentsQuery);
@@ -147,6 +158,7 @@ export default function SetoresPage() {
   };
 
   const openEditDialog = (sector: Sector) => {
+    if (!isAdmin) return;
     setEditingSector(sector);
     setIsDialogOpen(true);
   };
@@ -166,7 +178,8 @@ export default function SetoresPage() {
           <CardTitle className="text-2xl font-headline">Gerenciamento de Setores</CardTitle>
           <Dialog open={isDialogOpen} onOpenChange={(open) => { setIsDialogOpen(open); if (!open) setEditingSector(null); }}>
             <DialogTrigger asChild>
-              <Button variant="default">
+              <Button variant="default" disabled={!isAdmin} title={!isAdmin ? 'Ação disponível apenas para administradores' : 'Adicionar Novo Setor'}>
+                 {!isAdmin && <Lock className="mr-2 h-4 w-4" />}
                 <PlusCircle className="mr-2 h-5 w-5" /> Adicionar Setor
               </Button>
             </DialogTrigger>
@@ -228,13 +241,26 @@ export default function SetoresPage() {
                 <TableRow key={sector.id}>
                   <TableCell className="font-medium">{sector.name}</TableCell>
                   <TableCell className="text-right">
-                    <Button variant="ghost" size="icon" onClick={() => openEditDialog(sector)} className="hover:text-primary">
+                    <Button 
+                      variant="ghost" 
+                      size="icon" 
+                      onClick={() => openEditDialog(sector)} 
+                      className="hover:text-primary"
+                      disabled={!isAdmin}
+                      title={!isAdmin ? 'Ação disponível apenas para administradores' : 'Editar Setor'}
+                    >
                       <Edit className="h-4 w-4" />
                       <span className="sr-only">Editar</span>
                     </Button>
                     <AlertDialog>
                       <AlertDialogTrigger asChild>
-                        <Button variant="ghost" size="icon" className="hover:text-destructive">
+                        <Button 
+                          variant="ghost" 
+                          size="icon" 
+                          className="hover:text-destructive"
+                          disabled={!isAdmin}
+                          title={!isAdmin ? 'Ação disponível apenas para administradores' : 'Excluir Setor'}
+                        >
                           <Trash2 className="h-4 w-4" />
                           <span className="sr-only">Excluir</span>
                         </Button>

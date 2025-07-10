@@ -2,7 +2,7 @@
 "use client";
 
 import * as React from 'react';
-import { PlusCircle, Edit, Trash2, Search, Filter, FileDown, ClipboardX, FileUp, CalendarDays } from 'lucide-react';
+import { PlusCircle, Edit, Trash2, Search, Filter, FileDown, ClipboardX, FileUp, CalendarDays, Lock } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import {
   Table,
@@ -48,6 +48,7 @@ import { cn } from '@/lib/utils';
 import { format } from 'date-fns';
 import { getFirestore, writeBatch, doc, updateDoc, deleteDoc, addDoc, collection, onSnapshot, getDoc, query, where, getDocs, deleteField, Timestamp } from 'firebase/firestore';
 import { app } from '@/lib/firebase-config';
+import { useAuth } from '@/hooks/use-auth';
 
 const db = getFirestore(app);
 
@@ -91,6 +92,8 @@ const toSafeDate = (timestamp: any): Date | null => {
 
 export default function EquipamentosPage() {
   const { toast } = useToast();
+  const { user } = useAuth();
+  const isAdmin = user?.role === 'admin';
   const [equipments, setEquipments] = React.useState<Equipment[]>([]);
   const [sectors, setSectors] = React.useState<Sector[]>([]);
   const [isFormDialogOpen, setIsFormDialogOpen] = React.useState(false);
@@ -168,6 +171,11 @@ export default function EquipamentosPage() {
   }, [editingEquipment, form, isFormDialogOpen]);
 
   const handleAddOrUpdateEquipment = async (data: EquipmentFormValues) => {
+    if (!isAdmin) {
+      toast({ variant: 'destructive', title: 'Acesso Negado', description: 'Você não tem permissão para realizar esta ação.' });
+      return;
+    }
+
     const finalSectorId = (data.sectorId === NO_SECTOR_VALUE || data.sectorId === '')
                             ? undefined
                             : data.sectorId;
@@ -213,6 +221,10 @@ export default function EquipamentosPage() {
   };
 
   const handleDeleteEquipment = async (equipmentId: string) => {
+    if (!isAdmin) {
+      toast({ variant: 'destructive', title: 'Acesso Negado', description: 'Você não tem permissão para realizar esta ação.' });
+      return;
+    }
     try {
         await deleteDoc(doc(db, "equipments", equipmentId));
         toast({ title: 'Sucesso!', description: 'Equipamento removido.' });
@@ -223,6 +235,7 @@ export default function EquipamentosPage() {
   };
 
   const openEditDialog = (equipment: Equipment) => {
+    if (!isAdmin) return;
     setEditingEquipment(equipment);
     setIsFormDialogOpen(true);
   };
@@ -258,6 +271,11 @@ export default function EquipamentosPage() {
   };
 
   const handleConfirmMarkAsNotChecked = async () => {
+    if (!isAdmin) {
+      toast({ variant: 'destructive', title: 'Acesso Negado', description: 'Você não tem permissão para realizar esta ação.' });
+      setIsMarkUncheckedDialogOpen(false);
+      return;
+    }
     if (!sectorToMarkUnchecked) {
       toast({ variant: 'destructive', title: 'Seleção Necessária', description: 'Por favor, selecione um setor.' });
       return;
@@ -309,6 +327,11 @@ export default function EquipamentosPage() {
   };
 
   const handleImportCSV = (event: React.ChangeEvent<HTMLInputElement>) => {
+    if (!isAdmin) {
+      toast({ variant: 'destructive', title: 'Acesso Negado', description: 'Você não tem permissão para realizar esta ação.' });
+      if (fileInputRef.current) fileInputRef.current.value = "";
+      return;
+    }
     const file = event.target.files?.[0];
     if (!file) {
       return;
@@ -442,7 +465,14 @@ export default function EquipamentosPage() {
         <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4">
           <CardTitle className="text-2xl font-headline flex-1">Gerenciamento de Equipamentos</CardTitle>
           <div className="flex flex-col sm:flex-row gap-2 w-full sm:w-auto">
-             <Button variant="outline" onClick={() => fileInputRef.current?.click()} className="w-full sm:w-auto">
+             <Button 
+                variant="outline" 
+                onClick={() => fileInputRef.current?.click()} 
+                className="w-full sm:w-auto"
+                disabled={!isAdmin}
+                title={!isAdmin ? 'Ação disponível apenas para administradores' : 'Importar arquivo CSV'}
+              >
+                 {!isAdmin && <Lock className="mr-2 h-4 w-4" />}
                 <FileUp className="mr-2 h-5 w-5" /> Importar CSV
               </Button>
               <Input 
@@ -454,7 +484,13 @@ export default function EquipamentosPage() {
               />
             <Dialog open={isFormDialogOpen} onOpenChange={(open) => { setIsFormDialogOpen(open); if (!open) setEditingEquipment(null); }}>
               <DialogTrigger asChild>
-                <Button variant="default" className="w-full sm:w-auto">
+                <Button 
+                  variant="default" 
+                  className="w-full sm:w-auto"
+                  disabled={!isAdmin}
+                  title={!isAdmin ? 'Ação disponível apenas para administradores' : 'Adicionar Equipamento'}
+                >
+                  {!isAdmin && <Lock className="mr-2 h-4 w-4" />}
                   <PlusCircle className="mr-2 h-5 w-5" /> Adicionar Equipamento
                 </Button>
               </DialogTrigger>
@@ -628,7 +664,14 @@ export default function EquipamentosPage() {
           </Button>
            <AlertDialog open={isMarkUncheckedDialogOpen} onOpenChange={setIsMarkUncheckedDialogOpen}>
             <AlertDialogTrigger asChild>
-              <Button variant="destructive" className="w-full sm:flex-1 sm:min-w-0" onClick={() => { setSectorToMarkUnchecked(undefined); setIsMarkUncheckedDialogOpen(true); }}>
+              <Button 
+                variant="destructive" 
+                className="w-full sm:flex-1 sm:min-w-0" 
+                onClick={() => { setSectorToMarkUnchecked(undefined); setIsMarkUncheckedDialogOpen(true); }}
+                disabled={!isAdmin}
+                title={!isAdmin ? 'Ação disponível apenas para administradores' : 'Limpar Conferências'}
+              >
+                 {!isAdmin && <Lock className="mr-2 h-4 w-4" />}
                 <ClipboardX className="mr-2 h-4 w-4" /> Limpar Conferências
               </Button>
             </AlertDialogTrigger>
@@ -710,13 +753,26 @@ export default function EquipamentosPage() {
                   </TableCell>
                   <TableCell className="hidden lg:table-cell max-w-xs truncate">{equipment.description || 'N/A'}</TableCell>
                   <TableCell className="text-right">
-                    <Button variant="ghost" size="icon" onClick={() => openEditDialog(equipment)} className="hover:text-primary">
+                    <Button 
+                      variant="ghost" 
+                      size="icon" 
+                      onClick={() => openEditDialog(equipment)} 
+                      className="hover:text-primary"
+                      disabled={!isAdmin}
+                      title={!isAdmin ? 'Ação disponível apenas para administradores' : 'Editar Equipamento'}
+                    >
                       <Edit className="h-4 w-4" />
                       <span className="sr-only">Editar</span>
                     </Button>
                     <AlertDialog>
                       <AlertDialogTrigger asChild>
-                        <Button variant="ghost" size="icon" className="hover:text-destructive">
+                        <Button 
+                          variant="ghost" 
+                          size="icon" 
+                          className="hover:text-destructive"
+                          disabled={!isAdmin}
+                          title={!isAdmin ? 'Ação disponível apenas para administradores' : 'Excluir Equipamento'}
+                        >
                           <Trash2 className="h-4 w-4" />
                            <span className="sr-only">Excluir</span>
                         </Button>
