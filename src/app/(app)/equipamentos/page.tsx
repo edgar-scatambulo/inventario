@@ -186,6 +186,9 @@ export default function EquipamentosPage() {
       ...data,
       sectorId: finalSectorId || null,
       sectorName: sector?.name || null,
+      model: data.model || null,
+      serialNumber: data.serialNumber || null,
+      description: data.description || null,
     };
     
     try {
@@ -364,11 +367,11 @@ export default function EquipamentosPage() {
             }
         });
         
-        if (!headerMap['type'] && !headerMap['name'] && !headerMap['barcode']) {
+        if (headerMap['type'] === undefined || headerMap['name'] === undefined || headerMap['barcode'] === undefined) {
             toast({
                 variant: "destructive",
                 title: "Cabeçalho CSV Inválido",
-                description: <pre className="whitespace-pre-wrap text-xs">O cabeçalho esperado deve conter no mínimo: type, name, barcode.</pre>,
+                description: <pre className="whitespace-pre-wrap text-xs">O cabeçalho do arquivo CSV deve conter no mínimo as colunas: type, name, barcode.</pre>,
                 duration: 10000,
             });
             if (fileInputRef.current) fileInputRef.current.value = "";
@@ -419,9 +422,12 @@ export default function EquipamentosPage() {
                 } else {
                     const newEquipmentData = {
                         ...validationResult.data,
-                        sectorName: actualSectorNameForEquipment,
+                        sectorName: actualSectorNameForEquipment || null,
                         createdAt: Timestamp.now(),
                         sectorId: sectorId || null,
+                        model: validationResult.data.model || null,
+                        serialNumber: validationResult.data.serialNumber || null,
+                        description: validationResult.data.description || null,
                     };
                     const newDocRef = doc(collection(db, "equipments"));
                     batch.set(newDocRef, newEquipmentData);
@@ -440,7 +446,7 @@ export default function EquipamentosPage() {
                 toast({ title: 'Importação Concluída!', description: `${importedCount} equipamento(s) importado(s) com sucesso.` });
             } catch (error) {
                 console.error("Error committing batch import: ", error);
-                toast({ variant: "destructive", title: "Erro na Importação", description: "Ocorreu um erro ao salvar os dados no banco." });
+                toast({ variant: "destructive", title: "Erro na Importação", description: `Ocorreu um erro ao salvar os dados no banco: ${error instanceof Error ? error.message : String(error)}` });
             }
         } else if (errors.length === 0 && duplicateCount > 0) {
             toast({ title: 'Importação Finalizada', description: 'Nenhum novo equipamento foi adicionado pois todos já existiam.' });
@@ -820,5 +826,3 @@ export default function EquipamentosPage() {
     </Card>
   );
 }
-
-    
