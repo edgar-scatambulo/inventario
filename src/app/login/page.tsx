@@ -18,47 +18,64 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/com
 import { Logo } from '@/components/icons/logo';
 import { useAuth } from '@/hooks/use-auth';
 import { useToast } from '@/hooks/use-toast';
+import { useRouter } from 'next/navigation';
 
 const loginFormSchema = z.object({
-  username: z.string().min(3, { message: 'Usuário deve ter pelo menos 3 caracteres.' }),
+  email: z.string().email({ message: 'Por favor, insira um e-mail válido.' }),
   password: z.string().min(6, { message: 'Senha deve ter pelo menos 6 caracteres.' }),
 });
 
 type LoginFormValues = z.infer<typeof loginFormSchema>;
 
 export default function LoginPage() {
-  const { login } = useAuth();
+  const { login, user, loading } = useAuth();
   const { toast } = useToast();
-  const [isLoading, setIsLoading] = React.useState(false);
+  const router = useRouter();
+  const [isSubmitting, setIsSubmitting] = React.useState(false);
+
+  React.useEffect(() => {
+    if (!loading && user) {
+      router.replace('/dashboard');
+    }
+  }, [user, loading, router]);
 
   const form = useForm<LoginFormValues>({
     resolver: zodResolver(loginFormSchema),
     defaultValues: {
-      username: '',
+      email: '',
       password: '',
     },
   });
 
   async function onSubmit(data: LoginFormValues) {
-    setIsLoading(true);
+    setIsSubmitting(true);
     try {
-      // In a real app, you'd call your auth API here
-      // For this mock, we'll just use the username
-      await login(data.username, data.password);
+      await login(data.email, data.password);
+      // O redirecionamento será tratado pelo useEffect
       toast({
         title: 'Login bem-sucedido!',
-        description: `Bem-vindo, ${data.username}!`,
+        description: `Bem-vindo, ${data.email}! Redirecionando...`,
       });
-      // Redirect is handled by useAuth hook or (app)/layout.tsx
     } catch (error) {
       toast({
         variant: 'destructive',
         title: 'Erro no login',
         description: 'Usuário ou senha inválidos.',
       });
-      setIsLoading(false);
+      setIsSubmitting(false);
     }
-    // Don't setIsLoading(false) on success because page will redirect
+  }
+
+  // Se já estiver logado, não mostra o form, espera o redirect do useEffect
+  if (loading || user) {
+     return (
+       <div className="flex h-screen flex-col items-center justify-center space-y-4 bg-background p-8">
+         <Logo className="h-16 w-16 animate-pulse text-primary" />
+         <p className="text-lg font-medium text-foreground">
+           {loading ? 'Verificando autenticação...' : 'Redirecionando para o painel...'}
+         </p>
+       </div>
+    );
   }
 
   return (
@@ -74,12 +91,12 @@ export default function LoginPage() {
             <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-6">
               <FormField
                 control={form.control}
-                name="username"
+                name="email"
                 render={({ field }) => (
                   <FormItem>
-                    <FormLabel>Usuário</FormLabel>
+                    <FormLabel>E-mail</FormLabel>
                     <FormControl>
-                      <Input placeholder="seu.usuario" {...field} />
+                      <Input placeholder="seu.usuario@email.com" {...field} />
                     </FormControl>
                     <FormMessage />
                   </FormItem>
@@ -98,8 +115,8 @@ export default function LoginPage() {
                   </FormItem>
                 )}
               />
-              <Button type="submit" className="w-full" disabled={isLoading}>
-                {isLoading ? 'Entrando...' : 'Entrar'}
+              <Button type="submit" className="w-full" disabled={isSubmitting}>
+                {isSubmitting ? 'Entrando...' : 'Entrar'}
               </Button>
             </form>
           </Form>

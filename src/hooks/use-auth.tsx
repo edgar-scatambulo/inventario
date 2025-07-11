@@ -3,7 +3,7 @@
 import * as React from 'react';
 import type { User, UserRole } from '@/lib/types';
 import { createContext, useContext, useState, useEffect, ReactNode, useCallback } from 'react';
-import { useRouter } from 'next/navigation';
+import { useRouter, usePathname } from 'next/navigation';
 import { getAuth, onAuthStateChanged, signInWithEmailAndPassword, signOut as firebaseSignOut, type User as FirebaseUser } from "firebase/auth";
 import { doc, getDoc, getFirestore } from "firebase/firestore";
 import { app } from '@/lib/firebase-config';
@@ -32,10 +32,13 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   const checkFirestoreConnection = useCallback(async () => {
     setFirestoreStatus('checking');
     try {
+      // Use a document that all users can read, or adjust security rules
       await getDoc(doc(db, "_health_check", "status"));
       setFirestoreStatus('connected');
     } catch (error: any) {
-      if (error.code === 'permission-denied') {
+      // A "permission-denied" error is expected if rules are restrictive, 
+      // but it still confirms the service is reachable.
+      if (error.code === 'permission-denied' || error.code === 'not-found') {
         setFirestoreStatus('connected');
       } else {
         console.error("Firestore connection check failed:", error);
@@ -48,6 +51,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     checkFirestoreConnection();
     const unsubscribe = onAuthStateChanged(auth, async (firebaseUser: FirebaseUser | null) => {
       if (firebaseUser) {
+        setLoading(true);
         try {
           const userDocRef = doc(db, "users", firebaseUser.uid);
           const userDoc = await getDoc(userDocRef);
@@ -62,7 +66,8 @@ export function AuthProvider({ children }: { children: ReactNode }) {
             };
             setUser(appUser);
           } else {
-            console.warn("User document not found in Firestore. Logging out.");
+            // User exists in Firebase Auth but not in Firestore 'users' collection
+            console.warn("User document not found in Firestore for UID:", firebaseUser.uid, ". Logging out.");
             await firebaseSignOut(auth);
             setUser(null);
           }
@@ -84,15 +89,15 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     if (!password) {
       throw new Error("Password is required.");
     }
-    // onAuthStateChanged will handle setting the user state upon successful login
+    // onAuthStateChanged will handle setting the user state and triggering redirects
     await signInWithEmailAndPassword(auth, email, password);
   }, []);
 
   const logout = useCallback(async () => {
     try {
       await firebaseSignOut(auth);
-      // The onAuthStateChanged listener will set user to null
-      // The redirector components will handle pushing to /login
+      // onAuthStateChanged will set user to null.
+      // Redirect to login page after signing out.
       router.push('/login');
     } catch (error) {
       console.error("Error signing out: ", error);
