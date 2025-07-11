@@ -326,7 +326,7 @@ export default function EquipamentosPage() {
     }
   };
 
-  const handleImportCSV = (event: React.ChangeEvent<HTMLInputElement>) => {
+  const handleImportCSV = async (event: React.ChangeEvent<HTMLInputElement>) => {
     if (!isAdmin) {
       toast({ variant: 'destructive', title: 'Acesso Negado', description: 'Você não tem permissão para realizar esta ação.' });
       if (fileInputRef.current) fileInputRef.current.value = "";
@@ -339,121 +339,133 @@ export default function EquipamentosPage() {
 
     const reader = new FileReader();
     reader.onload = async (e) => {
-      const text = e.target?.result as string;
-      if (!text) {
-        toast({ variant: "destructive", title: "Erro ao ler arquivo", description: "Não foi possível ler o conteúdo do arquivo CSV." });
-        return;
-      }
-
-      const lines = text.split(/\r\n|\n/).filter(line => line.trim() !== '');
-      if (lines.length <= 1) {
-        toast({ variant: "destructive", title: "Arquivo CSV Vazio ou Inválido", description: "O arquivo CSV não contém dados ou possui apenas o cabeçalho." });
-        return;
-      }
-
-      const header = lines[0].split(',').map(h => h.trim().toLowerCase());
-      const expectedHeader = ['type', 'name', 'model', 'serialnumber', 'description', 'barcode', 'sectorname'];
-      
-      if (header.length !== expectedHeader.length || !expectedHeader.every((h, i) => h === header[i])) {
-         toast({
-          variant: "destructive",
-          title: "Cabeçalho CSV Inválido",
-          description: <pre className="whitespace-pre-wrap text-xs">O cabeçalho esperado é: {expectedHeader.join(',')}. O fornecido foi: {header.join(',')}</pre>,
-          duration: 10000,
-        });
-        if (fileInputRef.current) fileInputRef.current.value = "";
-        return;
-      }
-
-      const dataLines = lines.slice(1);
-      const errors: string[] = [];
-      let importedCount = 0;
-      let duplicateCount = 0;
-      const batch = writeBatch(db);
-      const allBarcodesInDB = new Set(equipments.map(eq => eq.barcode));
-
-      for (const [index, line] of dataLines.entries()) {
-        const values = line.split(',');
-        const rowData: any = {};
-        lines[0].split(',').map(h => h.trim()).forEach((col, i) => { 
-          rowData[col.toLowerCase()] = values[i]?.trim() || '';
-        });
-        
-        const sectorName = rowData.sectorname;
-        let sectorId: string | undefined = undefined;
-        let actualSectorNameForEquipment: string | undefined = undefined;
-
-        if (sectorName) {
-          const foundSector = sectors.find(s => s.name.toLowerCase() === sectorName.toLowerCase());
-          if (foundSector) {
-            sectorId = foundSector.id;
-            actualSectorNameForEquipment = foundSector.name;
-          } else {
-             errors.push(`Linha ${index + 2}: Setor '${sectorName}' não encontrado. Equipamento será adicionado sem setor.`);
-          }
+        const text = e.target?.result as string;
+        if (!text) {
+            toast({ variant: "destructive", title: "Erro ao ler arquivo", description: "Não foi possível ler o conteúdo do arquivo CSV." });
+            return;
         }
 
-        const parsedData = {
-          type: rowData.type,
-          name: rowData.name,
-          model: rowData.model || undefined,
-          serialNumber: rowData.serialnumber || undefined,
-          description: rowData.description || undefined,
-          barcode: rowData.barcode,
-          sectorId: sectorId,
-        };
+        const lines = text.split(/\r\n|\n/).filter(line => line.trim() !== '');
+        if (lines.length <= 1) {
+            toast({ variant: "destructive", title: "Arquivo CSV Vazio ou Inválido", description: "O arquivo CSV não contém dados ou possui apenas o cabeçalho." });
+            return;
+        }
         
-        const validationResult = equipmentFormSchema.safeParse(parsedData);
+        const headerLine = lines[0].split(',').map(h => h.trim().toLowerCase());
+        const expectedHeader = ['type', 'name', 'model', 'serialnumber', 'description', 'barcode', 'sectorname'];
+        const headerMap: { [key: string]: number } = {};
+        
+        const allHeadersFound = expectedHeader.every(h => {
+          const index = headerLine.indexOf(h);
+          if (index !== -1) {
+            headerMap[h] = index;
+            return true;
+          }
+          return false;
+        });
 
-        if (validationResult.success) {
-          if (allBarcodesInDB.has(validationResult.data.barcode)) {
-            errors.push(`Linha ${index + 2}: Patrimônio '${validationResult.data.barcode}' já existe e foi ignorado.`);
-            duplicateCount++;
-          } else {
-            const newEquipmentData = {
-              ...validationResult.data,
-              sectorName: actualSectorNameForEquipment,
-              createdAt: Timestamp.now(),
-              sectorId: sectorId || null,
+        if (!allHeadersFound) {
+            toast({
+                variant: "destructive",
+                title: "Cabeçalho CSV Inválido",
+                description: <pre className="whitespace-pre-wrap text-xs">O cabeçalho esperado deve conter as colunas: {expectedHeader.join(', ')}.</pre>,
+                duration: 10000,
+            });
+            if (fileInputRef.current) fileInputRef.current.value = "";
+            return;
+        }
+
+        const dataLines = lines.slice(1);
+        const errors: string[] = [];
+        let importedCount = 0;
+        let duplicateCount = 0;
+        const batch = writeBatch(db);
+        const allBarcodesInDB = new Set(equipments.map(eq => eq.barcode));
+        const allSectorsByName = new Map(sectors.map(s => [s.name.toLowerCase(), s]));
+
+        for (const [index, line] of dataLines.entries()) {
+            const values = line.split(',');
+            
+            const sectorName = (values[headerMap['sectorname']] || '').trim();
+            let sectorId: string | undefined = undefined;
+            let actualSectorNameForEquipment: string | undefined = undefined;
+
+            if (sectorName) {
+                const foundSector = allSectorsByName.get(sectorName.toLowerCase());
+                if (foundSector) {
+                    sectorId = foundSector.id;
+                    actualSectorNameForEquipment = foundSector.name;
+                } else {
+                    errors.push(`Linha ${index + 2}: Setor '${sectorName}' não encontrado. O equipamento será adicionado sem setor.`);
+                }
+            }
+
+            const parsedData = {
+                type: values[headerMap['type']] || '',
+                name: values[headerMap['name']] || '',
+                model: values[headerMap['model']] || undefined,
+                serialNumber: values[headerMap['serialnumber']] || undefined,
+                description: values[headerMap['description']] || undefined,
+                barcode: values[headerMap['barcode']] || '',
+                sectorId: sectorId,
             };
-            const newDocRef = doc(collection(db, "equipments"));
-            batch.set(newDocRef, newEquipmentData);
-            allBarcodesInDB.add(validationResult.data.barcode); // Avoid duplicates within the same file
-            importedCount++;
-          }
-        } else {
-          const errorMessages = validationResult.error.errors.map(err => `${err.path.join('.')}: ${err.message}`).join(', ');
-          errors.push(`Linha ${index + 2}: ${errorMessages}`);
-        }
-      };
 
-      if (importedCount > 0) {
-        await batch.commit();
-        toast({ title: 'Importação Concluída!', description: `${importedCount} equipamentos importados com sucesso.` });
-      } else if (errors.length === dataLines.length && importedCount === 0 && duplicateCount === 0) {
-         toast({ variant: "destructive", title: 'Importação Falhou', description: 'Nenhum equipamento válido encontrado no arquivo CSV.' });
-      } else if (importedCount === 0 && (errors.length > 0 || duplicateCount > 0)){
-         toast({ variant: "default", title: 'Importação Finalizada', description: 'Nenhum novo equipamento foi adicionado. Verifique os erros.' });
-      }
+            const validationResult = equipmentFormSchema.safeParse(parsedData);
 
-      if (errors.length > 0) {
-        const displayedErrors = errors.slice(0, 5);
-        const additionalErrorCount = errors.length - displayedErrors.length;
-        let errorDescription = displayedErrors.join('\n');
-        if (additionalErrorCount > 0) {
-          errorDescription += `\nE mais ${additionalErrorCount} outros erros/avisos.`;
+            if (validationResult.success) {
+                if (allBarcodesInDB.has(validationResult.data.barcode)) {
+                    errors.push(`Linha ${index + 2}: Patrimônio '${validationResult.data.barcode}' já existe e foi ignorado.`);
+                    duplicateCount++;
+                } else {
+                    const newEquipmentData = {
+                        ...validationResult.data,
+                        sectorName: actualSectorNameForEquipment,
+                        createdAt: Timestamp.now(),
+                        sectorId: sectorId || null,
+                    };
+                    const newDocRef = doc(collection(db, "equipments"));
+                    batch.set(newDocRef, newEquipmentData);
+                    allBarcodesInDB.add(validationResult.data.barcode);
+                    importedCount++;
+                }
+            } else {
+                const errorMessages = validationResult.error.errors.map(err => `${err.path.join('.')}: ${err.message}`).join(', ');
+                errors.push(`Linha ${index + 2}: ${errorMessages}`);
+            }
+        };
+
+        if (importedCount > 0) {
+            try {
+                await batch.commit();
+                toast({ title: 'Importação Concluída!', description: `${importedCount} equipamento(s) importado(s) com sucesso.` });
+            } catch (error) {
+                console.error("Error committing batch import: ", error);
+                toast({ variant: "destructive", title: "Erro na Importação", description: "Ocorreu um erro ao salvar os dados no banco." });
+            }
+        } else if (errors.length === 0 && duplicateCount > 0) {
+            toast({ title: 'Importação Finalizada', description: 'Nenhum novo equipamento foi adicionado pois todos já existiam.' });
+        } else if (errors.length > 0 && importedCount === 0) {
+            toast({ variant: "destructive", title: 'Importação Falhou', description: 'Nenhum equipamento válido foi encontrado no arquivo.' });
         }
-         toast({
-          variant: "destructive",
-          title: "Erros/Avisos na Importação de CSV",
-          description: <pre className="whitespace-pre-wrap text-xs max-h-40 overflow-y-auto">{errorDescription}</pre>,
-          duration: 15000, 
-        });
-      }
-      
-      if (fileInputRef.current) {
-        fileInputRef.current.value = "";
-      }
+
+        if (errors.length > 0) {
+            const displayedErrors = errors.slice(0, 5);
+            const additionalErrorCount = errors.length - displayedErrors.length;
+            let errorDescription = displayedErrors.join('\n');
+            if (additionalErrorCount > 0) {
+                errorDescription += `\nE mais ${additionalErrorCount} outros erros/avisos.`;
+            }
+            toast({
+                variant: "destructive",
+                title: `Erros/Avisos na Importação (${errors.length})`,
+                description: <pre className="whitespace-pre-wrap text-xs max-h-40 overflow-y-auto">{errorDescription}</pre>,
+                duration: 15000,
+            });
+        }
+        
+        if (fileInputRef.current) {
+            fileInputRef.current.value = "";
+        }
     };
     reader.readAsText(file, 'UTF-8');
   };
