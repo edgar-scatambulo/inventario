@@ -342,33 +342,33 @@ export default function EquipamentosPage() {
         const text = e.target?.result as string;
         if (!text) {
             toast({ variant: "destructive", title: "Erro ao ler arquivo", description: "Não foi possível ler o conteúdo do arquivo CSV." });
+            if (fileInputRef.current) fileInputRef.current.value = "";
             return;
         }
 
         const lines = text.split(/\r\n|\n/).filter(line => line.trim() !== '');
         if (lines.length <= 1) {
             toast({ variant: "destructive", title: "Arquivo CSV Vazio ou Inválido", description: "O arquivo CSV não contém dados ou possui apenas o cabeçalho." });
+            if (fileInputRef.current) fileInputRef.current.value = "";
             return;
         }
         
-        const headerLine = lines[0].split(',').map(h => h.trim().toLowerCase());
-        const expectedHeader = ['type', 'name', 'model', 'serialnumber', 'description', 'barcode', 'sectorname'];
+        const headerLine = lines[0].split(',').map(h => h.trim().toLowerCase().replace(/"/g, ''));
+        const expectedHeaders = ['type', 'name', 'model', 'serialnumber', 'description', 'barcode', 'sectorname'];
         const headerMap: { [key: string]: number } = {};
-        
-        const allHeadersFound = expectedHeader.every(h => {
-          const index = headerLine.indexOf(h);
-          if (index !== -1) {
-            headerMap[h] = index;
-            return true;
-          }
-          return false;
-        });
 
-        if (!allHeadersFound) {
+        expectedHeaders.forEach(header => {
+            const index = headerLine.indexOf(header);
+            if (index !== -1) {
+                headerMap[header] = index;
+            }
+        });
+        
+        if (!headerMap['type'] && !headerMap['name'] && !headerMap['barcode']) {
             toast({
                 variant: "destructive",
                 title: "Cabeçalho CSV Inválido",
-                description: <pre className="whitespace-pre-wrap text-xs">O cabeçalho esperado deve conter as colunas: {expectedHeader.join(', ')}.</pre>,
+                description: <pre className="whitespace-pre-wrap text-xs">O cabeçalho esperado deve conter no mínimo: type, name, barcode.</pre>,
                 duration: 10000,
             });
             if (fileInputRef.current) fileInputRef.current.value = "";
@@ -384,7 +384,7 @@ export default function EquipamentosPage() {
         const allSectorsByName = new Map(sectors.map(s => [s.name.toLowerCase(), s]));
 
         for (const [index, line] of dataLines.entries()) {
-            const values = line.split(',');
+            const values = line.split(',').map(v => v.trim().replace(/"/g, ''));
             
             const sectorName = (values[headerMap['sectorname']] || '').trim();
             let sectorId: string | undefined = undefined;
@@ -425,7 +425,7 @@ export default function EquipamentosPage() {
                     };
                     const newDocRef = doc(collection(db, "equipments"));
                     batch.set(newDocRef, newEquipmentData);
-                    allBarcodesInDB.add(validationResult.data.barcode);
+                    allBarcodesInDB.add(validationResult.data.barcode); // Avoid duplicating within the same file
                     importedCount++;
                 }
             } else {
@@ -445,7 +445,9 @@ export default function EquipamentosPage() {
         } else if (errors.length === 0 && duplicateCount > 0) {
             toast({ title: 'Importação Finalizada', description: 'Nenhum novo equipamento foi adicionado pois todos já existiam.' });
         } else if (errors.length > 0 && importedCount === 0) {
-            toast({ variant: "destructive", title: 'Importação Falhou', description: 'Nenhum equipamento válido foi encontrado no arquivo.' });
+             toast({ variant: "destructive", title: 'Importação Falhou', description: 'Nenhum equipamento válido foi encontrado no arquivo. Verifique os erros.' });
+        } else {
+            toast({ title: 'Importação Finalizada', description: 'Nenhum dado novo para importar.' });
         }
 
         if (errors.length > 0) {
@@ -818,3 +820,5 @@ export default function EquipamentosPage() {
     </Card>
   );
 }
+
+    
