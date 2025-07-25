@@ -2,7 +2,7 @@
 "use client";
 
 import * as React from 'react';
-import { PlusCircle, Edit, Trash2, Search, Filter, FileDown, ClipboardX, FileUp, CalendarDays, Lock } from 'lucide-react';
+import { PlusCircle, Edit, Trash2, Search, Filter, FileDown, ClipboardX, FileUp, CalendarDays, Lock, Eye } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import {
   Table,
@@ -98,6 +98,8 @@ export default function EquipamentosPage() {
   const [equipments, setEquipments] = React.useState<Equipment[]>([]);
   const [sectors, setSectors] = React.useState<Sector[]>([]);
   const [isFormDialogOpen, setIsFormDialogOpen] = React.useState(false);
+  const [isViewDialogOpen, setIsViewDialogOpen] = React.useState(false);
+  const [viewingEquipment, setViewingEquipment] = React.useState<Equipment | null>(null);
   const [editingEquipment, setEditingEquipment] = React.useState<Equipment | null>(null);
   const [searchTerm, setSearchTerm] = React.useState('');
   const [filterSector, setFilterSector] = React.useState<string | undefined>(undefined);
@@ -267,6 +269,11 @@ export default function EquipamentosPage() {
       console.error("Error deleting selected equipments: ", error);
       toast({ variant: 'destructive', title: 'Erro ao Remover', description: 'Não foi possível remover os equipamentos selecionados.' });
     }
+  };
+
+  const openViewDialog = (equipment: Equipment) => {
+    setViewingEquipment(equipment);
+    setIsViewDialogOpen(true);
   };
 
   const openEditDialog = (equipment: Equipment) => {
@@ -810,6 +817,35 @@ export default function EquipamentosPage() {
         </div>
       </CardHeader>
       <CardContent>
+        <Dialog open={isViewDialogOpen} onOpenChange={(open) => { setIsViewDialogOpen(open); if (!open) setViewingEquipment(null); }}>
+            <DialogContent className="sm:max-w-md">
+            <DialogHeader>
+                <DialogTitle>Detalhes do Equipamento</DialogTitle>
+                <DialogDescription>
+                Visualização completa das informações do equipamento.
+                </DialogDescription>
+            </DialogHeader>
+            {viewingEquipment && (
+                <div className="space-y-3 py-4 text-sm">
+                    <div className="flex justify-between"><span className="font-semibold text-muted-foreground">Tipo:</span> <span className="text-right">{viewingEquipment.type || 'N/A'}</span></div>
+                    <div className="flex justify-between"><span className="font-semibold text-muted-foreground">Marca:</span> <span className="text-right">{viewingEquipment.name}</span></div>
+                    <div className="flex justify-between"><span className="font-semibold text-muted-foreground">Modelo:</span> <span className="text-right">{viewingEquipment.model || 'N/A'}</span></div>
+                    <div className="flex justify-between"><span className="font-semibold text-muted-foreground">Nº de Série:</span> <span className="text-right">{viewingEquipment.serialNumber || 'N/A'}</span></div>
+                    <div className="flex justify-between"><span className="font-semibold text-muted-foreground">Patrimônio:</span> <span className="text-right">{viewingEquipment.barcode}</span></div>
+                    <div className="flex justify-between"><span className="font-semibold text-muted-foreground">Setor:</span> <span className="text-right">{viewingEquipment.sectorName || 'Não atribuído'}</span></div>
+                    <div className="flex flex-col"><span className="font-semibold text-muted-foreground">Descrição:</span> <p className="text-left bg-muted p-2 rounded-md mt-1">{viewingEquipment.description || 'N/A'}</p></div>
+                    <hr className="my-2"/>
+                    <div className="flex justify-between"><span className="font-semibold text-muted-foreground">Data Cadastro:</span> <span className="text-right">{viewingEquipment.createdAt ? format(toSafeDate(viewingEquipment.createdAt)!, 'dd/MM/yyyy HH:mm') : 'N/A'}</span></div>
+                    <div className="flex justify-between"><span className="font-semibold text-muted-foreground">Última Conferência:</span> <span className="text-right">{viewingEquipment.lastCheckedTimestamp ? format(toSafeDate(viewingEquipment.lastCheckedTimestamp)!, 'dd/MM/yyyy HH:mm') : 'Não conferido'}</span></div>
+                </div>
+            )}
+            <DialogFooter>
+                <DialogClose asChild>
+                <Button variant="outline">Fechar</Button>
+                </DialogClose>
+            </DialogFooter>
+            </DialogContent>
+        </Dialog>
         <div className="overflow-x-auto">
           <Table>
             <TableHeader>
@@ -867,6 +903,16 @@ export default function EquipamentosPage() {
                   </TableCell>
                   <TableCell className="hidden lg:table-cell max-w-xs truncate">{equipment.description || 'N/A'}</TableCell>
                   <TableCell className="text-right">
+                    <Button
+                        variant="ghost"
+                        size="icon"
+                        onClick={() => openViewDialog(equipment)}
+                        className="hover:text-primary"
+                        title="Visualizar Equipamento"
+                    >
+                        <Eye className="h-4 w-4" />
+                        <span className="sr-only">Visualizar</span>
+                    </Button>
                     <Button 
                       variant="ghost" 
                       size="icon" 
