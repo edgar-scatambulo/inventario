@@ -53,7 +53,7 @@ import { Checkbox } from '@/components/ui/checkbox';
 
 const db = getFirestore(app);
 
-const equipmentTypes = ['Gabinete', 'Impressora', 'Notebook', 'Monitor', 'Switch'];
+const equipmentTypes = ['Celular', 'Gabinete', 'Impressora', 'Monitor', 'Notebook', 'Switch'];
 
 const equipmentFormSchema = z.object({
   type: z.string().min(1, { message: 'Selecione um tipo.' }),
