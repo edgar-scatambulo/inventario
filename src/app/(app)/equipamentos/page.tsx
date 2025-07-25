@@ -49,6 +49,7 @@ import { format } from 'date-fns';
 import { getFirestore, writeBatch, doc, updateDoc, deleteDoc, addDoc, collection, onSnapshot, getDoc, query, where, getDocs, deleteField, Timestamp } from 'firebase/firestore';
 import { app } from '@/lib/firebase-config';
 import { useAuth } from '@/hooks/use-auth';
+import { Checkbox } from '@/components/ui/checkbox';
 
 const db = getFirestore(app);
 
@@ -100,6 +101,7 @@ export default function EquipamentosPage() {
   const [editingEquipment, setEditingEquipment] = React.useState<Equipment | null>(null);
   const [searchTerm, setSearchTerm] = React.useState('');
   const [filterSector, setFilterSector] = React.useState<string | undefined>(undefined);
+  const [selectedEquipments, setSelectedEquipments] = React.useState<string[]>([]);
 
   const [isMarkUncheckedDialogOpen, setIsMarkUncheckedDialogOpen] = React.useState(false);
   const [sectorToMarkUnchecked, setSectorToMarkUnchecked] = React.useState<string | undefined>(undefined);
@@ -169,6 +171,10 @@ export default function EquipamentosPage() {
       form.reset({ type: '', name: '', model: '', serialNumber: '', description: '', barcode: '', sectorId: NO_SECTOR_VALUE });
     }
   }, [editingEquipment, form, isFormDialogOpen]);
+  
+  React.useEffect(() => {
+    setSelectedEquipments([]);
+  }, [searchTerm, filterSector]);
 
   const handleAddOrUpdateEquipment = async (data: EquipmentFormValues) => {
     if (!isAdmin) {
@@ -237,6 +243,32 @@ export default function EquipamentosPage() {
     }
   };
 
+  const handleDeleteSelectedEquipments = async () => {
+    if (!isAdmin) {
+      toast({ variant: 'destructive', title: 'Acesso Negado', description: 'Você não tem permissão para realizar esta ação.' });
+      return;
+    }
+    if (selectedEquipments.length === 0) {
+      toast({ variant: 'destructive', title: 'Nenhum equipamento selecionado', description: 'Selecione pelo menos um equipamento para excluir.' });
+      return;
+    }
+
+    const batch = writeBatch(db);
+    selectedEquipments.forEach(id => {
+      const equipRef = doc(db, "equipments", id);
+      batch.delete(equipRef);
+    });
+
+    try {
+      await batch.commit();
+      toast({ title: 'Sucesso!', description: `${selectedEquipments.length} equipamento(s) removido(s).` });
+      setSelectedEquipments([]);
+    } catch (error) {
+      console.error("Error deleting selected equipments: ", error);
+      toast({ variant: 'destructive', title: 'Erro ao Remover', description: 'Não foi possível remover os equipamentos selecionados.' });
+    }
+  };
+
   const openEditDialog = (equipment: Equipment) => {
     if (!isAdmin) return;
     setEditingEquipment(equipment);
@@ -264,6 +296,22 @@ export default function EquipamentosPage() {
       }
       return typeA.localeCompare(typeB);
   });
+
+  const handleSelectAll = (checked: boolean) => {
+    if (checked) {
+      setSelectedEquipments(filteredEquipments.map(eq => eq.id));
+    } else {
+      setSelectedEquipments([]);
+    }
+  };
+  
+  const handleSelectOne = (id: string, checked: boolean) => {
+    if (checked) {
+      setSelectedEquipments(prev => [...prev, id]);
+    } else {
+      setSelectedEquipments(prev => prev.filter(eqId => eqId !== id));
+    }
+  };
 
   const handleExportClick = () => {
     toast({
@@ -360,13 +408,13 @@ export default function EquipamentosPage() {
         const expectedHeaders = ['type', 'name', 'model', 'serialnumber', 'description', 'barcode', 'sectorname'];
         const headerMap: { [key: string]: number } = {};
 
-        expectedHeaders.forEach(header => {
-            const index = headerLine.indexOf(header);
-            if (index !== -1) {
-                headerMap[header] = index;
-            }
+        headerLine.forEach((header, index) => {
+          const normalizedHeader = header.replace(/\s+/g, ''); // Remove spaces for better matching
+          if (expectedHeaders.includes(normalizedHeader)) {
+            headerMap[normalizedHeader] = index;
+          }
         });
-        
+
         if (headerMap['type'] === undefined || headerMap['name'] === undefined || headerMap['barcode'] === undefined) {
             toast({
                 variant: "destructive",
@@ -389,7 +437,9 @@ export default function EquipamentosPage() {
         for (const [index, line] of dataLines.entries()) {
             const values = line.split(',').map(v => v.trim().replace(/"/g, ''));
             
-            const sectorName = (values[headerMap['sectorname']] || '').trim();
+            const sectorNameRaw = values[headerMap['sectorname']];
+            const sectorName = (sectorNameRaw || '').trim();
+
             let sectorId: string | undefined = undefined;
             let actualSectorNameForEquipment: string | undefined = undefined;
 
@@ -402,7 +452,7 @@ export default function EquipamentosPage() {
                     errors.push(`Linha ${index + 2}: Setor '${sectorName}' não encontrado. O equipamento será adicionado sem setor.`);
                 }
             }
-
+            
             const parsedData = {
                 type: values[headerMap['type']] || '',
                 name: values[headerMap['name']] || '',
@@ -679,9 +729,33 @@ export default function EquipamentosPage() {
               ))}
             </SelectContent>
           </Select>
-          <Button variant="outline" onClick={handleExportClick} className="w-full sm:flex-1 sm:min-w-0">
-            <FileDown className="mr-2 h-4 w-4" /> Exportar
-          </Button>
+           {selectedEquipments.length > 0 && (
+            <AlertDialog>
+              <AlertDialogTrigger asChild>
+                <Button 
+                  variant="destructive" 
+                  className="w-full sm:flex-1 sm:min-w-0" 
+                  disabled={!isAdmin || selectedEquipments.length === 0}
+                  title={!isAdmin ? 'Ação disponível apenas para administradores' : 'Excluir Equipamentos Selecionados'}
+                >
+                  {!isAdmin && <Lock className="mr-2 h-4 w-4" />}
+                  <Trash2 className="mr-2 h-4 w-4" /> Excluir ({selectedEquipments.length})
+                </Button>
+              </AlertDialogTrigger>
+              <AlertDialogContent>
+                <AlertDialogHeader>
+                  <AlertDialogTitle>Confirmar Exclusão Múltipla</AlertDialogTitle>
+                  <AlertDialogDescription>
+                    Tem certeza que deseja excluir {selectedEquipments.length} equipamento(s) selecionado(s)? Esta ação não pode ser desfeita.
+                  </AlertDialogDescription>
+                </AlertDialogHeader>
+                <AlertDialogFooter>
+                  <AlertDialogCancel>Cancelar</AlertDialogCancel>
+                  <AlertDialogAction onClick={handleDeleteSelectedEquipments} className="bg-destructive hover:bg-destructive/90">Excluir</AlertDialogAction>
+                </AlertDialogFooter>
+              </AlertDialogContent>
+            </AlertDialog>
+          )}
            <AlertDialog open={isMarkUncheckedDialogOpen} onOpenChange={setIsMarkUncheckedDialogOpen}>
             <AlertDialogTrigger asChild>
               <Button 
@@ -740,6 +814,16 @@ export default function EquipamentosPage() {
           <Table>
             <TableHeader>
               <TableRow>
+                 <TableHead className="w-[40px] px-2">
+                  {isAdmin && (
+                    <Checkbox
+                      checked={selectedEquipments.length > 0 && selectedEquipments.length === filteredEquipments.length}
+                      onCheckedChange={(checked) => handleSelectAll(Boolean(checked))}
+                      aria-label="Selecionar todos"
+                      disabled={filteredEquipments.length === 0}
+                    />
+                  )}
+                </TableHead>
                 <TableHead>Tipo</TableHead>
                 <TableHead>Marca</TableHead>
                 <TableHead className="hidden sm:table-cell">Modelo</TableHead>
@@ -755,10 +839,20 @@ export default function EquipamentosPage() {
               {filteredEquipments.length > 0 ? filteredEquipments.map(equipment => (
                 <TableRow
                   key={equipment.id}
+                  data-state={selectedEquipments.includes(equipment.id) && "selected"}
                   className={cn(
                     !equipment.lastCheckedTimestamp && 'bg-destructive/10 hover:bg-destructive/15 dark:bg-destructive/20 dark:hover:bg-destructive/25'
                   )}
                 >
+                  <TableCell className="px-2">
+                    {isAdmin && (
+                       <Checkbox
+                        checked={selectedEquipments.includes(equipment.id)}
+                        onCheckedChange={(checked) => handleSelectOne(equipment.id, Boolean(checked))}
+                        aria-label={`Selecionar ${equipment.name}`}
+                      />
+                    )}
+                  </TableCell>
                   <TableCell>{equipment.type || 'N/A'}</TableCell>
                   <TableCell className="font-medium">{equipment.name}</TableCell>
                   <TableCell className="hidden sm:table-cell max-w-[150px] truncate">{equipment.model || 'N/A'}</TableCell>
@@ -814,7 +908,7 @@ export default function EquipamentosPage() {
                 </TableRow>
               )) : (
                 <TableRow>
-                  <TableCell colSpan={9} className="text-center h-24">
+                  <TableCell colSpan={10} className="text-center h-24">
                     Nenhum equipamento encontrado.
                   </TableCell>
                 </TableRow>
@@ -826,3 +920,5 @@ export default function EquipamentosPage() {
     </Card>
   );
 }
+
+    
